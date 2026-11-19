@@ -8,9 +8,9 @@ Full requirements live in `docs/spec.md`. Read it before starting any feature.
 
 ## Stack
 
-- Backend (`be/`): Java 21, Spring Boot 3 (monolith), Maven, Spring Security + JWT, Spring Data JPA, Flyway, Bean Validation
+- Backend (`be/`): Java 21, Spring Boot 4 (monolith), Maven, Spring Security + JWT, Spring Data JPA, Flyway, Bean Validation
 - Database: MySQL 8 (dev chạy bằng `docker-compose.yml`)
-- Frontend (`fe/`): React 18 + Vite + TypeScript (strict) + Tailwind CSS + React Router
+- Frontend (`fe/`): React 19 + Vite + TypeScript (strict) + Tailwind CSS + React Router
 - State và gọi API ở FE: Redux Toolkit (`createSlice`, `createAsyncThunk`). Không dùng TanStack Query
 - Thông báo: PWA (service worker) + Web Push (VAPID), kèm danh sách thông báo trong app
 - Test: JUnit 5 (+ Testcontainers hoặc H2) cho BE; Vitest + Testing Library cho FE
@@ -18,7 +18,7 @@ Full requirements live in `docs/spec.md`. Read it before starting any feature.
 
 ## Commands
 
-Chưa scaffold ở bước khởi tạo. Sau khi scaffold, các lệnh dự kiến:
+Các lệnh dưới đây đã scaffold sẵn:
 
 Backend (chạy trong `be/`):
 - `./mvnw spring-boot:run`: chạy server (port 8080)
@@ -27,8 +27,8 @@ Backend (chạy trong `be/`):
 
 Frontend (chạy trong `fe/`):
 - `npm run dev`: dev server (port 5173, proxy `/api` sang BE)
-- `npm run lint`: ESLint
-- `npm run typecheck`: `tsc --noEmit`
+- `npm run lint`: oxlint
+- `npm run typecheck`: `tsc -b`
 - `npm test`: Vitest
 - `npm run build`: production build
 
