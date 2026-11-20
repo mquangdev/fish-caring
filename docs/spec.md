@@ -226,18 +226,62 @@ Service/controller:
 12. Đăng ký trùng email nhận 409; đăng nhập sai nhận 401 với thông báo chung
 13. Tên bể trùng (khác hoa thường) bị từ chối
 
-## 11. Kế hoạch triển khai (nhánh `feature/mvp1`, mỗi commit một mối quan tâm)
+## 11. Milestone MVP1 (nhánh `feature/mvp1`)
 
-1. Khởi tạo: `CLAUDE.md`, `docs/spec.md`, cấu trúc thư mục `be/`, `fe/`, `.gitignore`, `.env.example`, `docker-compose.yml`
-2. Scaffold BE (Spring Boot, Maven) và FE (Vite + React + TS + Tailwind + Redux Toolkit) và duyệt dependency
-3. Flyway `V1__init.sql`, entity, repository
-4. Auth BE + test; FE đăng ký/đăng nhập, store `auth`, route bảo vệ
-5. CRUD bể (BE + test, FE danh sách/form/chi tiết)
-6. CRUD lịch chăm + `ScheduleCalculator` + test; FE form lịch chăm
-7. Hoàn thành/Hoãn + `CareLog` + trang Hôm nay + lịch sử
-8. Scheduler + thông báo trong app + polling
-9. Web Push + PWA + hướng dẫn iOS
-10. Polish mobile, 404, empty states, README
+Mỗi milestone là một nhóm commit nhỏ, mỗi commit một mối quan tâm. Milestone chỉ được coi là xong khi đạt đủ "Tiêu chí hoàn thành" và qua Definition of done trong `CLAUDE.md`. Làm tuần tự: milestone sau dựa vào milestone trước. Mỗi milestone có thể demo được trên máy dev.
+
+Trạng thái: `[x]` xong, `[ ]` chưa làm.
+
+### [x] M0. Khởi tạo tài liệu và cấu trúc
+- Phạm vi: `CLAUDE.md`, `docs/spec.md`, thư mục `be/` và `fe/`, `.gitignore`, `.env.example`, `docker-compose.yml`, README
+- Tiêu chí hoàn thành: đã commit và mở PR #1
+
+### [x] M1. Scaffold BE và FE
+- Phạm vi: Spring Boot 4 (Java 21, Maven, JPA, Flyway, Security, Validation, MySQL); Vite + React 19 + TypeScript + Tailwind + Redux Toolkit + React Router + Vitest
+- Tiêu chí hoàn thành: `./mvnw verify` pass; `npm run lint`, `typecheck`, `test`, `build` pass; FE hiện trang chủ và 404
+
+### [ ] M2. Cơ sở dữ liệu và nền tảng BE
+- Phạm vi: Flyway `V1__init.sql` tạo đủ bảng ở mục 6; entity và repository; `@RestControllerAdvice` với một dạng lỗi chung (mục 8); cấu hình CORS; kết nối MySQL thật qua `docker compose`
+- Tiêu chí hoàn thành: `docker compose up -d` rồi chạy BE thì Flyway tự tạo bảng; `GET /actuator/health` trả `UP`; test repository trên H2 pass
+- Không gồm: bất kỳ API nghiệp vụ nào
+
+### [ ] M3. Đăng ký, đăng nhập
+- Phạm vi BE: `POST /api/auth/register`, `POST /api/auth/login`, `GET/PATCH /api/me`; BCrypt, JWT filter, mọi route còn lại yêu cầu đăng nhập
+- Phạm vi FE: trang `/login`, `/register`, slice `auth`, API client gắn JWT, 401 thì về `/login`, route bảo vệ, đăng xuất ở `/settings`, khung điều hướng đáy màn hình
+- Tiêu chí hoàn thành: đăng ký rồi đăng nhập được trên trình duyệt, tải lại trang vẫn giữ phiên, gọi API không token nhận 401; test mục 10 số 12 pass
+
+### [ ] M4. Quản lý bể
+- Phạm vi BE: CRUD `/api/tanks` (gồm danh sách cá), quy tắc tên bể và giới hạn số bể (mục 4.3), mọi truy vấn lọc theo user
+- Phạm vi FE: `/tanks`, `/tanks/new`, `/tanks/:id`, `/tanks/:id/edit`, slice `tanks`, hộp thoại xác nhận xoá, trạng thái rỗng/tải/lỗi
+- Tiêu chí hoàn thành: tạo, sửa, xoá bể và cá trong bể trên điện thoại (390px); user A không truy cập được bể của user B (404); test mục 10 số 11 và 13 pass
+
+### [ ] M5. Lịch chăm và `ScheduleCalculator`
+- Phạm vi BE: lớp thuần `ScheduleCalculator` (`firstDue`, `nextAfterComplete`, `snooze`) theo mục 4.2; CRUD `/api/tanks/{id}/tasks`, `/api/tasks/{id}`, bật/tắt, giới hạn 20 lịch mỗi bể
+- Phạm vi FE: danh sách lịch trong chi tiết bể, form lịch chăm (mục 5.4) với dòng xem trước "Lần nhắc đầu tiên", bật/tắt nhanh, slice `tasks`
+- Tiêu chí hoàn thành: tạo được ba kiểu lặp `DAILY`, `EVERY_N_DAYS`, `ONCE` và `nextDueAt` đúng theo múi giờ người dùng; test mục 10 số 1 đến 7 pass (đây là phần quan trọng nhất cần test kỹ)
+
+### [ ] M6. Hoàn thành, tạm hoãn, trang Hôm nay, lịch sử
+- Phạm vi BE: `POST /api/tasks/{id}/complete`, `POST /api/tasks/{id}/snooze`, ghi `CareLog`, `GET /api/today`, `GET /api/tanks/{id}/logs`
+- Phạm vi FE: trang `/` (Hôm nay) với nhóm "Đến giờ / Quá hạn" và "Sắp tới", nút "Hoàn thành" và "Hoãn đến mai", lịch sử chăm trong chi tiết bể
+- Tiêu chí hoàn thành: bấm Hoàn thành thì `nextDueAt` chuyển sang lần kế tiếp đúng quy tắc, bấm Hoãn thì lùi đúng 1 ngày giữ giờ, mỗi hành động có một dòng nhật ký; việc `ONCE` hoàn thành thì tự tắt
+
+### [ ] M7. Thông báo trong app
+- Phạm vi BE: scheduler `@Scheduled` mỗi phút tạo `notifications` cho lịch đến hạn (không trùng theo `task_id` + `due_at`, lịch tắt không sinh), `GET /api/notifications`, `unread-count`, `read-all`; hoàn thành/hoãn chuyển thông báo sang `RESOLVED`
+- Phạm vi FE: trang `/notifications`, chuông/chấm số chưa đọc ở thanh điều hướng, polling 60 giây khi tab mở, slice `notifications`
+- Tiêu chí hoàn thành: tạo lịch đến hạn sau 1 phút thì đúng 1 thông báo xuất hiện trong app; hoãn thì ngày mai thông báo mới xuất hiện lúc cùng giờ; test mục 10 số 8 đến 10 pass
+
+### [ ] M8. PWA và Web Push
+- Phạm vi BE: sinh/đọc khoá VAPID từ biến môi trường, `GET /api/push/public-key`, `POST/DELETE /api/push/subscribe`, gửi push khi tạo thông báo, xoá subscription khi push trả 404/410
+- Phạm vi FE: `manifest`, icon, service worker (`push`, `notificationclick` mở `/`), nút "Bật/Tắt thông báo" ở `/settings` và banner ở Hôm nay, hướng dẫn cài vào Màn hình chính cho iOS, ẩn nút khi trình duyệt không hỗ trợ
+- Tiêu chí hoàn thành: trên Chrome (desktop hoặc Android) nhận được push khi đến giờ kể cả đóng tab; bấm thông báo mở trang Hôm nay. iOS chỉ kiểm thử được khi có HTTPS và đã cài PWA (kiểm thử iOS có thể làm sau khi triển khai)
+
+### [ ] M9. Hoàn thiện và phát hành bản thử
+- Phạm vi: rà mobile 390px và chế độ sáng/tối, trạng thái rỗng/tải/lỗi mọi màn hình, trang 404, README hướng dẫn chạy từ đầu, GitHub Actions CI (BE `verify`, FE lint/typecheck/test/build), rà bảo mật mục 9
+- Tiêu chí hoàn thành: người mới clone repo chạy được toàn bộ theo README; CI xanh; đi hết luồng của mục 1 (đăng ký, tạo bể, đặt lịch, nhận thông báo, hoàn thành/hoãn) không lỗi; không còn lỗi console; PR `feature/mvp1` sẵn sàng merge vào `main`
+
+### Thứ tự và phụ thuộc
+
+`M2 -> M3 -> M4 -> M5 -> M6 -> M7 -> M8 -> M9`. Có thể bỏ M8 ra bản sau nếu cần ra mắt sớm, vì M7 đã đủ để dùng được (người dùng phải mở app để thấy thông báo); khi đó lời hứa "nhận thông báo trên điện thoại" của mục 1 chưa đạt.
 
 ## 12. Quyết định đã chốt
 
