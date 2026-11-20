@@ -8,7 +8,7 @@ Full requirements live in `docs/spec.md`. Read it before starting any feature.
 
 ## Stack
 
-- Backend (`be/`): Java 21, Spring Boot 4 (monolith), Maven, Spring Security + JWT, Spring JDBC (`JdbcClient`, không dùng JPA), Flyway, Bean Validation
+- Backend (`be/`): Java 21, Spring Boot 4 (monolith), Maven, Spring Security + JWT, Spring JDBC (`JdbcClient`, không dùng JPA), Flyway, Bean Validation, Lombok
 - Database: MySQL 8 (dev chạy bằng `docker-compose.yml`)
 - Frontend (`fe/`): React 19 + Vite + TypeScript (strict) + Tailwind CSS + React Router + shadcn/ui
 - State và gọi API ở FE: Redux Toolkit (`createSlice`, `createAsyncThunk`). Không dùng TanStack Query
@@ -44,14 +44,20 @@ fish-caring/
   .env.example            # variable names only
   be/                     # Spring Boot monolith
     src/main/java/com/fishcaring/
-      auth/               # register, login, JWT
-      tank/               # tanks and fish in tanks
-      caretask/           # care schedules, complete/snooze, care logs
-      notification/       # notifications, scheduler, web push
-      common/             # config, exception handling, shared utils
+      controller/         # REST controllers (thin)
+      service/            # business logic, @Transactional
+      repository/         # JdbcClient + SQL only
+      entity/             # Lombok classes mapping DB rows (XxxEntity)
+      dto/                # request/response Lombok classes, ApiError
+      object/             # internal value objects (TankData, CareTaskData, ...)
+      constant/           # SQL constants, one XxxSql class per table
+      mapper/             # entity <-> dto conversion
+      enums/              # TankType, TaskType, RepeatType, ...
+      config/             # SecurityConfig, TimeConfig (Clock), AppProperties
+      exception/          # domain exceptions, GlobalExceptionHandler
     src/main/resources/
       db/migration/       # Flyway: V1__init.sql, ...
-    src/test/java/com/fishcaring/
+    src/test/java/com/fishcaring/   # mirrors the main packages
   fe/                     # React app
     public/               # manifest, icons, service worker
     src/
@@ -80,7 +86,7 @@ Trước khi sinh hoặc sửa code, đọc file rule của thư mục đó. Cá
 
 Rule chung cho cả hai phía:
 
-- Thời gian lưu UTC; mỗi user có `timezone` (mặc định `Asia/Ho_Chi_Minh`) chỉ dùng khi tính "hàng ngày lúc HH:mm" và "hôm nay"
+- Toàn hệ thống dùng giờ Việt Nam (UTC+7), lưu `LocalDateTime`; không có múi giờ theo user. Mọi bảng có `created_at` và `updated_at`
 - Mọi truy vấn dữ liệu người dùng lọc theo user đang đăng nhập; truy cập dữ liệu người khác trả 404
 - Config và secret (mật khẩu DB, `JWT_SECRET`, khoá VAPID) lấy từ biến môi trường
 - Máy dev là Windows: không dùng script chỉ chạy được trên bash trong `package.json` và tài liệu

@@ -24,7 +24,7 @@ Người nuôi cá, chơi thủy sinh tại nhà, dùng điện thoại là chí
 
 - Một **người dùng** (User) có nhiều **bể** (Tank).
 - Một bể có danh sách **cá** (TankFish: tên loài + số lượng, nhập tay) và nhiều **lịch chăm** (CareTask).
-- Một lịch chăm có: loại việc, tiêu đề, ghi chú, giờ nhắc, kiểu lặp, và `nextDueAt` (thời điểm đến hạn kế tiếp, UTC).
+- Một lịch chăm có: loại việc, tiêu đề, ghi chú, giờ nhắc, kiểu lặp, và `nextDueAt` (thời điểm đến hạn kế tiếp, giờ Việt Nam).
 - Khi `nextDueAt <= now` và lịch đang bật, hệ thống tạo đúng **một thông báo** cho lần đến hạn đó, gửi push (nếu người dùng đã bật), và hiện lịch trong trang "Hôm nay" ở nhóm "Đến giờ / Quá hạn".
 - Người dùng có hai hành động trên một việc đã đến hạn:
   - **Hoàn thành**: ghi một bản ghi `CareLog` (kết quả `DONE`) và tính `nextDueAt` kế tiếp.
@@ -43,11 +43,11 @@ Ví dụ: "Cho ăn 8:00 mỗi ngày", "Thay 30% nước 19:00 mỗi 7 ngày", "B
 
 ### 4.2 Quy tắc tính lịch (hàm thuần, có unit test)
 
-Tất cả tính theo múi giờ của người dùng (`user.timezone`, mặc định `Asia/Ho_Chi_Minh`), kết quả lưu UTC.
+Toàn hệ thống dùng một múi giờ duy nhất là giờ Việt Nam (`Asia/Ho_Chi_Minh`, UTC+7, không có giờ mùa hè). Mọi thời điểm lưu và tính bằng `LocalDateTime` theo giờ này, không có múi giờ riêng theo người dùng.
 
 - Tạo lịch `DAILY`/`EVERY_N_DAYS`: `nextDueAt` là lần đầu tiên `timeOfDay` xảy ra từ `startDate` trở đi mà còn ở tương lai (nếu hôm nay đã qua giờ thì ngày mai).
-- **Hoàn thành**: lấy `base = max(now, nextDueAt)` rồi lấy ngày của `base` (theo múi giờ người dùng). `DAILY`: ngày kế tiếp = ngày đó + 1. `EVERY_N_DAYS`: ngày đó + `intervalDays`. Ghép với `timeOfDay`. `ONCE`: tắt lịch (`enabled = false`). Nghĩa là hoàn thành trễ không làm dồn lịch, hoàn thành sớm không bị nhắc lại trong cùng ngày.
-- **Tạm hoãn**: `nextDueAt = nextDueAt + 1 ngày` (cộng theo ngày lịch ở múi giờ người dùng, giữ nguyên giờ, đúng cả khi đổi giờ mùa hè). Nếu việc đã quá hạn nhiều ngày, hoãn vẫn chỉ cộng 1 ngày từ `nextDueAt` hiện tại; nếu kết quả vẫn ở quá khứ thì dùng cùng giờ của ngày mai tính từ `now`.
+- **Hoàn thành**: lấy `base = max(now, nextDueAt)` rồi lấy ngày của `base` (giờ Việt Nam). `DAILY`: ngày kế tiếp = ngày đó + 1. `EVERY_N_DAYS`: ngày đó + `intervalDays`. Ghép với `timeOfDay`. `ONCE`: tắt lịch (`enabled = false`). Nghĩa là hoàn thành trễ không làm dồn lịch, hoàn thành sớm không bị nhắc lại trong cùng ngày.
+- **Tạm hoãn**: `nextDueAt = nextDueAt + 1 ngày` (cộng đúng 1 ngày lịch, giữ nguyên giờ). Nếu việc đã quá hạn nhiều ngày, hoãn vẫn chỉ cộng 1 ngày từ `nextDueAt` hiện tại; nếu kết quả vẫn ở quá khứ thì dùng cùng giờ của ngày mai tính từ `now`.
 - Tạm hoãn không đổi lịch lặp: lần đến hạn sau của lịch được tính lại từ lúc hoàn thành như trên.
 - Sửa `timeOfDay`, kiểu lặp hoặc ngày bắt đầu thì tính lại `nextDueAt` như khi tạo mới.
 - Tắt lịch (`enabled = false`): không tạo thông báo; bật lại thì tính lại `nextDueAt` như khi tạo mới.
@@ -59,7 +59,7 @@ Tất cả tính theo múi giờ của người dùng (`user.timezone`, mặc đ
 - Hoàn thành hoặc hoãn một việc thì thông báo tương ứng chuyển sang trạng thái đã xử lý (`resolved`).
 - Xoá bể thì xoá luôn cá, lịch, thông báo và nhật ký chăm của bể đó. Xoá bể cần hộp thoại xác nhận.
 - Xoá lịch cần xác nhận; nhật ký đã ghi của lịch đó vẫn giữ theo bể, hiển thị theo tiêu đề đã lưu lúc ghi.
-- Tên bể không rỗng, tối đa 100 ký tự, không trùng (không phân biệt hoa thường) trong cùng một người dùng.
+- Tên bể không rỗng, tối đa 100 ký tự, không trùng (không phân biệt hoa thường) trong cùng một người dùng. Việc kiểm tra làm ở service bằng `LOWER(name)`, không có ràng buộc unique ở DB. Trên MySQL (`utf8mb4_unicode_ci`) phép so sánh cũng không phân biệt dấu, nên "Bể" và "Be" bị coi là trùng.
 - Thể tích bể (lít) là số nguyên dương, có thể để trống.
 - Mỗi bể tối đa 20 lịch chăm, mỗi người dùng tối đa 30 bể (chặn lạm dụng, có thể chỉnh sau).
 - Người dùng không bao giờ truy cập được dữ liệu của người khác; truy cập sai id trả 404.
@@ -85,12 +85,12 @@ Tất cả tính theo múi giờ của người dùng (`user.timezone`, mặc đ
 
 ### 5.3 Danh sách bể `/tanks` và chi tiết bể `/tanks/:id`
 - Danh sách: thẻ bể (tên, thể tích, số lịch, việc kế tiếp), nút nổi "Thêm bể"
-- Form bể: tên, thể tích (lít), loại bể (`PLANTED` thủy sinh, `FISH_ONLY` cá cảnh, `OTHER`), ngày setup, ghi chú, danh sách cá (tên + số lượng, thêm/xoá nhanh)
+- Form bể: tên, thể tích (lít), loại bể (`PLANTED` thủy sinh, `FISH_ONLY` cá cảnh, `OTHER`), ngày setup, ghi chú, danh sách cá (tên loài + số lượng + trạng thái còn sống/đã chết, thêm/xoá nhanh; đàn cá chết một phần thì tách thành hai dòng)
 - Chi tiết bể: thông tin bể, danh sách lịch chăm (bật/tắt nhanh, sửa, xoá, hiển thị "Mỗi ngày 08:00" / "Mỗi 7 ngày 19:00" / "Một lần 25/11 21:00" và lần đến hạn kế tiếp), nút "Thêm lịch chăm", lịch sử chăm gần đây (50 mục, mới nhất trước)
 
 ### 5.4 Form lịch chăm
 - Loại việc (chọn), tiêu đề (mặc định theo loại, ví dụ "Cho ăn"), ghi chú (ví dụ "Thay 30% nước"), kiểu lặp, giờ nhắc, số ngày (khi `EVERY_N_DAYS`), ngày bắt đầu hoặc ngày giờ (khi `ONCE`)
-- Xem trước dòng "Lần nhắc đầu tiên: ..." theo giờ người dùng
+- Xem trước dòng "Lần nhắc đầu tiên: ..." theo giờ Việt Nam
 
 ### 5.5 Thông báo `/notifications`
 - Danh sách thông báo mới nhất trước: nội dung ("Bể Mini 30L: đến giờ cho ăn"), thời gian, trạng thái chưa đọc/đã đọc/đã xử lý
@@ -98,7 +98,7 @@ Tất cả tính theo múi giờ của người dùng (`user.timezone`, mặc đ
 - FE gọi lại danh sách và số chưa đọc mỗi 60 giây khi tab đang mở (thunk polling)
 
 ### 5.6 Cài đặt `/settings`
-- Tên hiển thị, múi giờ (mặc định Asia/Ho_Chi_Minh), bật/tắt thông báo đẩy trên thiết bị này, đăng xuất
+- Tên hiển thị, bật/tắt thông báo đẩy trên thiết bị này, đăng xuất
 
 ### 5.7 Thành phần dùng chung
 - Chế độ sáng/tối theo hệ thống
@@ -108,27 +108,27 @@ Tất cả tính theo múi giờ của người dùng (`user.timezone`, mặc đ
 
 ## 6. Mô hình dữ liệu
 
-Bảng MySQL, tạo bằng Flyway (`V1__init.sql`). Khoá chính `BIGINT AUTO_INCREMENT` (id số), thời gian kiểu `DATETIME(3)` lưu UTC.
+Bảng MySQL, tạo bằng Flyway (`V1__init.sql`). Khoá chính `BIGINT AUTO_INCREMENT` (id số), thời gian kiểu `DATETIME(3)` lưu giờ Việt Nam (UTC+7). **Mọi bảng đều có hai cột `created_at` và `updated_at` (NOT NULL)**, do ứng dụng ghi (không dùng giá trị mặc định của DB); mô tả dưới đây không nhắc lại hai cột này.
 
 ```
 users
-  id, email (unique, lowercase), password_hash, display_name,
-  timezone (default 'Asia/Ho_Chi_Minh'), created_at
+  id, email (unique, lowercase), password_hash, display_name
 
 tanks
   id, user_id (FK), name, volume_liters (nullable), type ('PLANTED'|'FISH_ONLY'|'OTHER'),
-  setup_date (nullable), note (nullable), created_at, updated_at
-  unique (user_id, name_lower)
+  setup_date (nullable), note (nullable)
+  index (user_id, name)   -- tên bể không trùng trong một user: kiểm tra ở service, không ràng buộc ở DB
 
 tank_fish
-  id, tank_id (FK), species_name, quantity (int >= 1)
+  id, tank_id (FK), species_name, quantity (int >= 1),
+  status (TINYINT: 1 = còn sống, 0 = đã chết)
 
 care_tasks
   id, tank_id (FK), type ('FEED'|'WATER_CHANGE'|'FERTILIZE'|'OTHER'),
   title, note (nullable),
   repeat_type ('DAILY'|'EVERY_N_DAYS'|'ONCE'),
   interval_days (nullable), time_of_day (TIME), start_date (nullable, DATE),
-  enabled, next_due_at (nullable, UTC), created_at, updated_at
+  enabled, next_due_at (nullable)
   index (enabled, next_due_at)
 
 care_logs
@@ -137,11 +137,11 @@ care_logs
 
 notifications
   id, user_id (FK), task_id (FK, cascade), due_at, message,
-  status ('UNREAD'|'READ'|'RESOLVED'), created_at
+  status ('UNREAD'|'READ'|'RESOLVED')
   unique (task_id, due_at)
 
 push_subscriptions
-  id, user_id (FK), endpoint (unique), p256dh, auth, user_agent, created_at
+  id, user_id (FK), endpoint (unique), p256dh, auth, user_agent
 ```
 
 Enum và hàm thuần ở BE: `RepeatType`, `TaskType`; lớp `ScheduleCalculator` với `firstDue(...)`, `nextAfterComplete(...)`, `snooze(...)` (có unit test, xem mục 10).
@@ -168,7 +168,7 @@ Xác thực: header `Authorization: Bearer <JWT>`. JWT hết hạn sau 7 ngày (
 POST   /api/auth/register          { email, password, displayName } -> { token, user }
 POST   /api/auth/login             { email, password } -> { token, user }
 GET    /api/me                     -> user
-PATCH  /api/me                     { displayName?, timezone? } -> user
+PATCH  /api/me                     { displayName? } -> user
 
 GET    /api/tanks                  -> [tank + taskCount + nextDueAt]
 POST   /api/tanks                  -> tank
@@ -209,7 +209,7 @@ Mã trạng thái: 400 (validation), 401 (chưa đăng nhập/token sai), 404 (k
 
 ## 10. Test case nghiệp vụ
 
-`ScheduleCalculator` (unit test thuần, có cả trường hợp múi giờ `Asia/Ho_Chi_Minh`):
+`ScheduleCalculator` (unit test thuần, dùng `Clock` cố định theo giờ Việt Nam):
 1. Tạo `DAILY` 08:00 lúc 07:00 -> hôm nay 08:00; lúc 09:00 -> ngày mai 08:00
 2. Hoàn thành `DAILY` đúng giờ -> ngày mai cùng giờ
 3. Hoàn thành `DAILY` trễ 3 ngày -> ngày mai (tính từ `now`), không dồn lịch
@@ -240,8 +240,8 @@ Trạng thái: `[x]` xong, `[ ]` chưa làm.
 - Phạm vi: Spring Boot 4 (Java 21, Maven, Spring JDBC, Flyway, Security, Validation, MySQL); Vite + React 19 + TypeScript + Tailwind + Redux Toolkit + React Router + Vitest
 - Tiêu chí hoàn thành: `./mvnw verify` pass; `npm run lint`, `typecheck`, `test`, `build` pass; FE hiện trang chủ và 404
 
-### [ ] M2. Cơ sở dữ liệu và nền tảng BE
-- Phạm vi: Flyway `V1__init.sql` tạo đủ bảng ở mục 6; row record và repository JDBC (`JdbcClient`); `@RestControllerAdvice` với một dạng lỗi chung (mục 8); cấu hình CORS; kết nối MySQL thật qua `docker compose`
+### [x] M2. Cơ sở dữ liệu và nền tảng BE
+- Phạm vi: Flyway `V1__init.sql` tạo đủ bảng ở mục 6; entity và repository JDBC (`JdbcClient`); `@RestControllerAdvice` với một dạng lỗi chung (mục 8); cấu hình CORS; kết nối MySQL thật qua `docker compose`
 - Tiêu chí hoàn thành: `docker compose up -d` rồi chạy BE thì Flyway tự tạo bảng; `GET /actuator/health` trả `UP`; test repository (chạy SQL thật trên H2) pass
 - Không gồm: bất kỳ API nghiệp vụ nào
 
@@ -258,7 +258,7 @@ Trạng thái: `[x]` xong, `[ ]` chưa làm.
 ### [ ] M5. Lịch chăm và `ScheduleCalculator`
 - Phạm vi BE: lớp thuần `ScheduleCalculator` (`firstDue`, `nextAfterComplete`, `snooze`) theo mục 4.2; CRUD `/api/tanks/{id}/tasks`, `/api/tasks/{id}`, bật/tắt, giới hạn 20 lịch mỗi bể
 - Phạm vi FE: danh sách lịch trong chi tiết bể, form lịch chăm (mục 5.4) với dòng xem trước "Lần nhắc đầu tiên", bật/tắt nhanh, slice `tasks`
-- Tiêu chí hoàn thành: tạo được ba kiểu lặp `DAILY`, `EVERY_N_DAYS`, `ONCE` và `nextDueAt` đúng theo múi giờ người dùng; test mục 10 số 1 đến 7 pass (đây là phần quan trọng nhất cần test kỹ)
+- Tiêu chí hoàn thành: tạo được ba kiểu lặp `DAILY`, `EVERY_N_DAYS`, `ONCE` và `nextDueAt` đúng theo giờ Việt Nam; test mục 10 số 1 đến 7 pass (đây là phần quan trọng nhất cần test kỹ)
 
 ### [ ] M6. Hoàn thành, tạm hoãn, trang Hôm nay, lịch sử
 - Phạm vi BE: `POST /api/tasks/{id}/complete`, `POST /api/tasks/{id}/snooze`, ghi `CareLog`, `GET /api/today`, `GET /api/tanks/{id}/logs`
@@ -294,4 +294,4 @@ Trạng thái: `[x]` xong, `[ ]` chưa làm.
 - **Hoãn:** MVP chỉ có một mức "hoãn đến mai" (+1 ngày, giữ giờ)
 - **Lịch:** chỉ có `DAILY`, `EVERY_N_DAYS`, `ONCE`; chưa có lịch theo thứ trong tuần hay nhiều mốc giờ trong ngày
 - **Dữ liệu cá:** nhập tay (tên + số lượng), chưa có thư viện loài
-- **Múi giờ:** mỗi người dùng có một múi giờ, mặc định `Asia/Ho_Chi_Minh`
+- **Múi giờ:** toàn hệ thống dùng giờ Việt Nam (UTC+7) cố định, lưu `LocalDateTime`; không có múi giờ theo người dùng
