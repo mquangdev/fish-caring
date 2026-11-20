@@ -8,12 +8,12 @@ Full requirements live in `docs/spec.md`. Read it before starting any feature.
 
 ## Stack
 
-- Backend (`be/`): Java 21, Spring Boot 4 (monolith), Maven, Spring Security + JWT, Spring Data JPA, Flyway, Bean Validation
+- Backend (`be/`): Java 21, Spring Boot 4 (monolith), Maven, Spring Security + JWT, Spring JDBC (`JdbcClient`, không dùng JPA), Flyway, Bean Validation
 - Database: MySQL 8 (dev chạy bằng `docker-compose.yml`)
-- Frontend (`fe/`): React 19 + Vite + TypeScript (strict) + Tailwind CSS + React Router
+- Frontend (`fe/`): React 19 + Vite + TypeScript (strict) + Tailwind CSS + React Router + shadcn/ui
 - State và gọi API ở FE: Redux Toolkit (`createSlice`, `createAsyncThunk`). Không dùng TanStack Query
 - Thông báo: PWA (service worker) + Web Push (VAPID), kèm danh sách thông báo trong app
-- Test: JUnit 5 (+ Testcontainers hoặc H2) cho BE; Vitest + Testing Library cho FE
+- Test: JUnit 5 + H2 (MODE=MySQL) cho BE; Vitest + Testing Library cho FE
 - Monolith: một Spring Boot app, một database. Không tách microservice
 
 ## Commands
@@ -71,34 +71,25 @@ Package/feature-first on the backend: each feature folder has its own controller
 - Docs (`docs/spec.md`): Vietnamese
 - URLs and API paths stay ASCII
 
-## Conventions
+## Rule bắt buộc theo thư mục
 
-Backend:
-- Layering: controller (thin) -> service (business logic) -> repository. Never return JPA entities from controllers; use DTOs
-- Validate input with Bean Validation; return one consistent error body from a global `@RestControllerAdvice`
-- Every query on user data is scoped by the authenticated user. A user must never read or change another user's tank/task/notification (return 404, not 403)
-- Store all timestamps as UTC `Instant`; each user has a `timezone` (default `Asia/Ho_Chi_Minh`) used only when computing "daily at HH:mm" and "today"
-- Schedule maths (next due after complete, snooze) are pure functions in one class with unit tests; services and the scheduler never compute dates inline
-- Schema changes only through Flyway migrations. Never edit an applied migration; add a new one. `spring.jpa.hibernate.ddl-auto` stays `validate`
-- Passwords hashed with BCrypt; never log passwords, tokens or push keys
-- Config and secrets (DB password, JWT secret, VAPID keys) come from environment variables
+Trước khi sinh hoặc sửa code, đọc file rule của thư mục đó. Các rule này là bắt buộc, vi phạm là lỗi:
 
-Frontend:
-- Mobile-first: design for ~390px width, touch targets at least 44px, no hover-only interactions; must not break on desktop
-- Support light and dark mode (follow `prefers-color-scheme`, manual toggle optional)
-- Server data lives in Redux slices fetched with `createAsyncThunk`; components select state, they do not call `fetch`/axios directly. Each slice tracks `status` (`idle | loading | succeeded | failed`) and `error`
-- Use typed hooks (`useAppDispatch`, `useAppSelector`); no `any`
-- JWT is attached by the API client in `src/api/`; a 401 clears auth state and redirects to login
-- Dates are shown in the user's timezone in Vietnamese format (`dd/MM/yyyy HH:mm`); never show raw ISO strings
-- Every list needs a friendly empty state, every async action a loading and error state
+- Code trong `be/`: đọc `be/CLAUDE.md` (khoá chính `BIGINT AUTO_INCREMENT`, JDBC không JPA, JWT, phân tầng, test...)
+- Code trong `fe/`: đọc `fe/CLAUDE.md` (UI/UX thân thiện không rối mắt, design token, shadcn/ui, Redux slice, 3 trạng thái tải/lỗi/rỗng...)
 
-General:
-- Commit messages follow Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `test:`)
-- Development machine is Windows: avoid bash-only scripts in `package.json` and docs commands
+Rule chung cho cả hai phía:
+
+- Thời gian lưu UTC; mỗi user có `timezone` (mặc định `Asia/Ho_Chi_Minh`) chỉ dùng khi tính "hàng ngày lúc HH:mm" và "hôm nay"
+- Mọi truy vấn dữ liệu người dùng lọc theo user đang đăng nhập; truy cập dữ liệu người khác trả 404
+- Config và secret (mật khẩu DB, `JWT_SECRET`, khoá VAPID) lấy từ biến môi trường
+- Máy dev là Windows: không dùng script chỉ chạy được trên bash trong `package.json` và tài liệu
+- Commit message theo Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `test:`)
 
 ## Rules
 
-- Never commit to `main`. Work on `feature/*`, `fix/*` or `chore/*` branches and open a PR. The MVP lives on `feature/mvp1`
+- Never commit to `main`. Work on `feature/*`, `fix/*` or `chore/*` branches. The MVP lives on `feature/mvp1`
+- Do NOT commit or push on your own. Leave changes uncommitted in the working tree and list the changed files so the user can review locally first. Commit, push or open a PR only when the user asks
 - One commit/PR = one concern. Keep diffs small and reviewable
 - Do not add dependencies without asking first
 - Do not invent business rules: if `docs/spec.md` is silent (e.g. what happens when a task is overdue for several days), ask or leave a clear TODO in the spec
@@ -115,14 +106,14 @@ Before saying a task is finished:
 2. New business logic has unit tests (especially schedule maths, snooze, and data isolation between users)
 3. The screen works at mobile width (390px), does not break on desktop, and looks right in light and dark mode
 4. No console errors, no unhandled API errors shown as raw text
-5. Changes are committed on the feature branch with a clear message
+5. Changes are left uncommitted for the user to review (see Rules)
 
 ## Workflow
 
 1. Read `docs/spec.md` and this file
 2. For any non-trivial task, propose a short plan and wait for approval
-3. Implement step by step, committing after each working step
-4. Run the checks above, then open a PR describing what changed and how to verify it
+3. Implement step by step, running the checks as you go
+4. Run the checks above, then stop and report the changed files for review. Commit and open a PR only when the user asks
 
 ## Learned rules
 

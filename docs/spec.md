@@ -237,12 +237,12 @@ Trạng thái: `[x]` xong, `[ ]` chưa làm.
 - Tiêu chí hoàn thành: đã commit và mở PR #1
 
 ### [x] M1. Scaffold BE và FE
-- Phạm vi: Spring Boot 4 (Java 21, Maven, JPA, Flyway, Security, Validation, MySQL); Vite + React 19 + TypeScript + Tailwind + Redux Toolkit + React Router + Vitest
+- Phạm vi: Spring Boot 4 (Java 21, Maven, Spring JDBC, Flyway, Security, Validation, MySQL); Vite + React 19 + TypeScript + Tailwind + Redux Toolkit + React Router + Vitest
 - Tiêu chí hoàn thành: `./mvnw verify` pass; `npm run lint`, `typecheck`, `test`, `build` pass; FE hiện trang chủ và 404
 
 ### [ ] M2. Cơ sở dữ liệu và nền tảng BE
-- Phạm vi: Flyway `V1__init.sql` tạo đủ bảng ở mục 6; entity và repository; `@RestControllerAdvice` với một dạng lỗi chung (mục 8); cấu hình CORS; kết nối MySQL thật qua `docker compose`
-- Tiêu chí hoàn thành: `docker compose up -d` rồi chạy BE thì Flyway tự tạo bảng; `GET /actuator/health` trả `UP`; test repository trên H2 pass
+- Phạm vi: Flyway `V1__init.sql` tạo đủ bảng ở mục 6; row record và repository JDBC (`JdbcClient`); `@RestControllerAdvice` với một dạng lỗi chung (mục 8); cấu hình CORS; kết nối MySQL thật qua `docker compose`
+- Tiêu chí hoàn thành: `docker compose up -d` rồi chạy BE thì Flyway tự tạo bảng; `GET /actuator/health` trả `UP`; test repository (chạy SQL thật trên H2) pass
 - Không gồm: bất kỳ API nghiệp vụ nào
 
 ### [ ] M3. Đăng ký, đăng nhập
@@ -286,6 +286,8 @@ Trạng thái: `[x]` xong, `[ ]` chưa làm.
 ## 12. Quyết định đã chốt
 
 - **Kiến trúc:** monolith Spring Boot + MySQL; FE React tách riêng trong `fe/`, giao tiếp qua REST
+- **Truy cập DB:** không dùng JPA; dùng Spring `JdbcClient` với SQL viết tay, khoá chính `BIGINT AUTO_INCREMENT`
+- **UI FE:** shadcn/ui trên Tailwind, quy chuẩn UI/UX chi tiết ở `fe/CLAUDE.md`; quy chuẩn BE ở `be/CLAUDE.md`
 - **Auth:** email + mật khẩu, JWT, chưa có quên mật khẩu/OAuth
 - **State FE:** Redux Toolkit (không dùng TanStack Query)
 - **Thông báo:** PWA + Web Push và danh sách thông báo trong app; chưa làm native app/email
