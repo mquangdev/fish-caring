@@ -29,4 +29,10 @@ public final class UserSql {
             FROM users
             WHERE email = :email
             """;
+
+    public static final String UPDATE_DISPLAY_NAME = """
+            UPDATE users
+            SET display_name = :displayName, updated_at = :now
+            WHERE id = :id
+            """;
 }

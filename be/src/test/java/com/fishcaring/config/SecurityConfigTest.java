@@ -3,6 +3,7 @@ package com.fishcaring.config;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
@@ -16,7 +17,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @WebMvcTest(SecurityConfigTest.PingController.class)
-@Import({SecurityConfig.class, SecurityConfigTest.PingController.class})
+@Import({SecurityConfig.class, JwtConfig.class, RestAuthenticationEntryPoint.class, RestAccessDeniedHandler.class,
+        SecurityConfigTest.PingController.class})
 @EnableConfigurationProperties(AppProperties.class)
 @TestPropertySource(properties = "app.cors-allowed-origin=http://localhost:5173")
 class SecurityConfigTest {
@@ -44,8 +46,10 @@ class SecurityConfigTest {
     }
 
     @Test
-    void otherRoutesRequireAuthenticationAndReturn401() throws Exception {
-        mvc.perform(get("/api/ping")).andExpect(status().isUnauthorized());
+    void otherRoutesRequireAuthenticationAndReturn401WithApiErrorBody() throws Exception {
+        mvc.perform(get("/api/ping"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
     }
 
     @Test

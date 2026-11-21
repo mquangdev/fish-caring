@@ -43,13 +43,18 @@ Java 21, Spring Boot 4, Maven, Spring JDBC (`JdbcClient`), Flyway, MySQL 8, Spri
 - BẮT BUỘC: dùng JWT access token (HS256), header `Authorization: Bearer <token>`, stateless. Không dùng session phía server, không dùng cookie
 - BẮT BUỘC: mật khẩu băm bằng BCrypt. `JWT_SECRET` lấy từ biến môi trường (tối thiểu 32 ký tự). Thời hạn token cấu hình được. Không bao giờ log mật khẩu hay token
 - BẮT BUỘC: lấy user hiện tại từ `SecurityContext` qua một helper dùng chung (`CurrentUser`). Không bao giờ nhận `userId` từ client
-- Thư viện JWT phải được duyệt trước khi thêm (quyết định ở M3)
+- Thư viện JWT đã chốt: `spring-boot-starter-oauth2-resource-server` (Nimbus). `JwtEncoder`/`JwtDecoder` HS256 cấu hình ở `config/JwtConfig`, token phát ra bởi `service/JwtService` (chỉ chứa `sub` = id user, `iat`, `exp`). Không tự viết filter JWT, không thêm thư viện JWT khác
+- BẮT BUỘC: `JWT_SECRET` không có giá trị mặc định; thiếu hoặc ngắn hơn 32 byte thì ứng dụng không khởi động (kiểm tra trong `AppProperties.Jwt`)
+- BẮT BUỘC: đăng nhập sai (email lạ hoặc sai mật khẩu) luôn trả cùng một lỗi `401 INVALID_CREDENTIALS`; so sánh BCrypt cả khi không có user (hash giả) để không lộ email tồn tại
+- BẮT BUỘC: lỗi 401/403 từ Spring Security cũng trả body `ApiError` (`RestAuthenticationEntryPoint`, `RestAccessDeniedHandler`); message API bằng tiếng Anh, FE tự hiển thị tiếng Việt theo `code`
+- `CurrentUser` (`service/CurrentUser`) là cách duy nhất để controller biết user hiện tại
 
 ## Lombok và kiểu dữ liệu
 
 - BẮT BUỘC: `entity`, `dto` và `object` là **class dùng Lombok**, KHÔNG ĐƯỢC dùng `record` (ví dụ `CareLogEntity` phải là `class CareLogEntity`). `record` chỉ được dùng cho thứ không thuộc ba package này (ví dụ class `@ConfigurationProperties`, hoặc kiểu phụ trợ trong test)
 - BẮT BUỘC: entity dùng `@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder`. Thứ tự field trong class trùng thứ tự cột trong `RowMapper` (constructor đầy đủ tham số)
-- BẮT BUỘC: `dto` và `object` là bất biến: field `private final`, dùng `@Getter @AllArgsConstructor` (thêm `@Builder` khi có từ 4 field trở lên). Request DTO cần Bean Validation thì đặt annotation lên field
+- BẮT BUỘC: response DTO và `object` là bất biến: field `private final`, dùng `@Getter @AllArgsConstructor` (thêm `@Builder` khi có từ 4 field trở lên)
+- BẮT BUỘC: request DTO (body JSON đi vào) dùng `@Getter @Setter @NoArgsConstructor @AllArgsConstructor` để Jackson gán được giá trị, và đặt annotation Bean Validation lên field
 - BẮT BUỘC: dùng wrapper (`Long`, `Integer`, `Boolean`) cho field của entity/dto/object để biểu diễn được `null`; getter của `Boolean` là `getEnabled()`
 - KHÔNG ĐƯỢC: dùng `@Data`, `@Value`, `@SneakyThrows`, `@Cleanup`. Không đặt Lombok trong `constant` ngoài `@NoArgsConstructor(access = AccessLevel.PRIVATE)`
 - Dùng Lombok cho constructor injection nếu muốn (`@RequiredArgsConstructor`) trong service/controller; log bằng `@Slf4j` thay cho khai báo logger tay

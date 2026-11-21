@@ -59,4 +59,14 @@ public class UserRepository {
                 .single();
         return count > 0;
     }
+
+    /** Returns true when the user exists and was updated. */
+    public boolean updateDisplayName(long id, String displayName, LocalDateTime now) {
+        int rows = jdbc.sql(UserSql.UPDATE_DISPLAY_NAME)
+                .param("id", id)
+                .param("displayName", displayName)
+                .param("now", now)
+                .update();
+        return rows > 0;
+    }
 }

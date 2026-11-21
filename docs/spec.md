@@ -74,7 +74,9 @@ Toàn hệ thống dùng một múi giờ duy nhất là giờ Việt Nam (`Asia
 
 ### 5.1 Đăng ký / Đăng nhập
 - Đăng ký: tên hiển thị, email, mật khẩu (tối thiểu 8 ký tự). Thành công thì đăng nhập luôn
-- Đăng nhập: email + mật khẩu; báo lỗi chung "Email hoặc mật khẩu không đúng" (không tiết lộ email có tồn tại)
+- Đăng nhập: email + mật khẩu; báo lỗi chung "Email hoặc mật khẩu không đúng" (không tiết lộ email có tồn tại). API trả `401` với `code = INVALID_CREDENTIALS` cho cả email lạ lẫn sai mật khẩu
+- Email được chuẩn hoá (cắt khoảng trắng, chữ thường); mật khẩu 8 đến 72 ký tự; tên hiển thị 1 đến 100 ký tự
+- Thông điệp API bằng tiếng Anh kèm `code`; FE hiển thị tiếng Việt theo `code`
 - Đăng xuất ở trang Cài đặt
 
 ### 5.2 Hôm nay `/`
@@ -162,7 +164,7 @@ Enum và hàm thuần ở BE: `RepeatType`, `TaskType`; lớp `ScheduleCalculato
 
 ## 8. API (REST, JSON, prefix `/api`)
 
-Xác thực: header `Authorization: Bearer <JWT>`. JWT hết hạn sau 7 ngày (cấu hình), chưa có refresh token ở MVP. Lỗi trả về dạng `{ "code": "...", "message": "...", "fieldErrors": { ... } }`.
+Xác thực: header `Authorization: Bearer <JWT>` (HS256, claim `sub` = id user). JWT hết hạn sau 7 ngày (`JWT_EXPIRES_DAYS`), chưa có refresh token ở MVP. `JWT_SECRET` bắt buộc, tối thiểu 32 ký tự, không có giá trị mặc định. Thiếu hoặc sai token trả `401` với `code = UNAUTHORIZED`. `register` trả `201`, `login` trả `200`. Lỗi trả về dạng `{ "code": "...", "message": "...", "fieldErrors": { ... } }`.
 
 ```
 POST   /api/auth/register          { email, password, displayName } -> { token, user }
@@ -245,7 +247,7 @@ Trạng thái: `[x]` xong, `[ ]` chưa làm.
 - Tiêu chí hoàn thành: `docker compose up -d` rồi chạy BE thì Flyway tự tạo bảng; `GET /actuator/health` trả `UP`; test repository (chạy SQL thật trên H2) pass
 - Không gồm: bất kỳ API nghiệp vụ nào
 
-### [ ] M3. Đăng ký, đăng nhập
+### [x] M3. Đăng ký, đăng nhập
 - Phạm vi BE: `POST /api/auth/register`, `POST /api/auth/login`, `GET/PATCH /api/me`; BCrypt, JWT filter, mọi route còn lại yêu cầu đăng nhập
 - Phạm vi FE: trang `/login`, `/register`, slice `auth`, API client gắn JWT, 401 thì về `/login`, route bảo vệ, đăng xuất ở `/settings`, khung điều hướng đáy màn hình
 - Tiêu chí hoàn thành: đăng ký rồi đăng nhập được trên trình duyệt, tải lại trang vẫn giữ phiên, gọi API không token nhận 401; test mục 10 số 12 pass
