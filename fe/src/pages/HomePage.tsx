@@ -1,10 +1,19 @@
+import { CalendarCheck } from 'lucide-react'
+import { EmptyState } from '@/components/EmptyState'
+import { useAppSelector } from '@/store/hooks'
+
+/** Placeholder until the "Hôm nay" list is built (milestone M6). */
 export default function HomePage() {
+  const user = useAppSelector((state) => state.auth.user)
+
   return (
-    <main className="mx-auto max-w-md p-4">
-      <h1 className="text-2xl font-bold">Fish Caring</h1>
-      <p className="mt-2 text-slate-600 dark:text-slate-300">
-        Nhắc lịch chăm sóc bể cá của bạn.
-      </p>
-    </main>
+    <div className="flex flex-col gap-6">
+      <h1 className="text-2xl font-bold">Xin chào, {user?.displayName}</h1>
+      <EmptyState
+        icon={CalendarCheck}
+        title="Hôm nay chưa có việc nào"
+        description="Khi bạn thêm bể và đặt lịch chăm sóc, những việc cần làm trong ngày sẽ hiện ở đây."
+      />
+    </div>
   )
 }
