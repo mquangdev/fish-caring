@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fishcaring.RepositoryTestSupport;
 import com.fishcaring.entity.UserEntity;
+import com.fishcaring.entity.UserEntity;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DuplicateKeyException;
 
@@ -22,6 +24,24 @@ class UserRepositoryTest extends RepositoryTestSupport {
         assertThat(users.findById(id)).isPresent();
         assertThat(users.existsByEmail("a@example.com")).isTrue();
         assertThat(users.existsByEmail("nobody@example.com")).isFalse();
+    }
+
+    @Test
+    void updateDisplayNameChangesNameAndUpdatedAtOnly() {
+        long id = users.insert("a@example.com", "hash", "Alice", NOW);
+        LocalDateTime later = NOW.plusHours(2);
+
+        assertThat(users.updateDisplayName(id, "Alice Nguyen", later)).isTrue();
+
+        UserEntity user = users.findById(id).orElseThrow();
+        assertThat(user.getDisplayName()).isEqualTo("Alice Nguyen");
+        assertThat(user.getCreatedAt()).isEqualTo(NOW);
+        assertThat(user.getUpdatedAt()).isEqualTo(later);
+    }
+
+    @Test
+    void updateDisplayNameOfUnknownUserReturnsFalse() {
+        assertThat(users.updateDisplayName(999_999L, "X", NOW)).isFalse();
     }
 
     @Test

@@ -7,6 +7,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fishcaring.config.AppProperties;
+import com.fishcaring.config.JwtConfig;
+import com.fishcaring.config.RestAccessDeniedHandler;
+import com.fishcaring.config.RestAuthenticationEntryPoint;
 import com.fishcaring.config.SecurityConfig;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -25,7 +28,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 @WebMvcTest(GlobalExceptionHandlerTest.ThrowingController.class)
-@Import({GlobalExceptionHandler.class, SecurityConfig.class, GlobalExceptionHandlerTest.ThrowingController.class})
+@Import({GlobalExceptionHandler.class, SecurityConfig.class, JwtConfig.class, RestAuthenticationEntryPoint.class,
+        RestAccessDeniedHandler.class, GlobalExceptionHandlerTest.ThrowingController.class})
 @EnableConfigurationProperties(AppProperties.class)
 @TestPropertySource(properties = "app.cors-allowed-origin=http://localhost:5173")
 @WithMockUser
@@ -45,6 +49,11 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/test/not-found")
         String notFound() {
             throw new NotFoundException("Tank not found");
+        }
+
+        @GetMapping("/test/unauthorized")
+        String unauthorized() {
+            throw UnauthorizedException.invalidCredentials();
         }
 
         @GetMapping("/test/conflict")
@@ -97,6 +106,13 @@ class GlobalExceptionHandlerTest {
         mvc.perform(post("/test/not-found"))
                 .andExpect(status().isMethodNotAllowed())
                 .andExpect(jsonPath("$.code").value("METHOD_NOT_ALLOWED"));
+    }
+
+    @Test
+    void unauthorizedReturns401WithItsCode() throws Exception {
+        mvc.perform(get("/test/unauthorized"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
     }
 
     @Test
