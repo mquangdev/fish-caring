@@ -4,7 +4,7 @@ Quy chuẩn bắt buộc cho mọi dòng code frontend. Đọc file này cùng `
 
 ## Stack (cố định)
 
-React 19, Vite, TypeScript (strict), Tailwind CSS 4, React Router, Redux Toolkit, shadcn/ui, Vitest + Testing Library. Không thêm dependency khi chưa hỏi (shadcn/ui và các gói đi kèm đã được duyệt khi cài đặt).
+React 19, Vite, TypeScript (strict), Tailwind CSS 4, React Router, Redux Toolkit, axios, shadcn/ui, Vitest + Testing Library. Không thêm dependency khi chưa hỏi (shadcn/ui và các gói đi kèm đã được duyệt khi cài đặt).
 
 ## UI và UX
 
@@ -25,7 +25,9 @@ Người dùng là người chơi cá cảnh dùng điện thoại, nhiều khi 
 
 - BẮT BUỘC: TypeScript strict. Không dùng `any`, không dùng `@ts-ignore`. Kiểu dữ liệu API khai báo trong `src/api/` (hoặc `src/types/`)
 - BẮT BUỘC: dữ liệu từ server nằm trong Redux slice (`createSlice` + `createAsyncThunk`). Mỗi slice theo dõi `status` (`idle | loading | succeeded | failed`) và `error`. Component chỉ dùng `useAppSelector` / `useAppDispatch`, không bao giờ gọi HTTP trực tiếp
-- BẮT BUỘC: mọi lời gọi HTTP đi qua client trong `src/api/`; client này gắn JWT và khi gặp 401 thì xoá trạng thái đăng nhập rồi chuyển về `/login`
+- BẮT BUỘC: dùng `axios` cho mọi lời gọi HTTP, KHÔNG dùng `fetch`, và KHÔNG gọi axios hay service trực tiếp trong component/page. Ba lớp tách riêng: `src/api/axiosClient.ts` (**file cấu hình axios duy nhất**: base URL, timeout, interceptor gắn JWT, chuẩn hoá lỗi thành `ApiError`, xử lý 401 qua hàm do store đăng ký), `src/services/XxxService.ts` (mỗi tài nguyên một file, mỗi hàm chỉ gọi axiosClient và trả `response.data`), `src/types/` (kiểu request/response). Luồng: component -> `dispatch(thunk)` -> thunk gọi service -> service dùng axiosClient
+- BẮT BUỘC: mọi câu chữ lỗi hiển thị cho người dùng đặt ở `src/lib/messages.ts` (API trả thông điệp tiếng Anh + `code`, FE ánh xạ sang tiếng Việt theo `code`/tên field); validate form phía client ở `src/lib/validation.ts`
+- Không dùng `class-variance-authority`: biến thể component viết bằng bảng tra thuần + `cn()` (xem `components/ui/button.tsx`). Khi chạy `shadcn add`, rà lại import này
 - BẮT BUỘC: mỗi file một component, tên `PascalCase`. Hook đặt tên `useXxx`. Màn hình theo route nằm ở `pages/`, phần tái sử dụng ở `components/`, hàm thuần ở `lib/` (có test)
 - BẮT BUỘC: style bằng class Tailwind và helper `cn()`. Không dùng inline `style`, không viết CSS rời rạc ngoài token toàn cục
 - BẮT BUỘC: giữ component nhỏ (tách khi vượt khoảng 150 dòng). Không sao chép cùng một khối UI ba lần, hãy tách thành component

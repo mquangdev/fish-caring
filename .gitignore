@@ -20,3 +20,6 @@ fe/node_modules/
 fe/dist/
 fe/coverage/
 fe/*.tsbuildinfo
+
+# Stray folder some tools create from an unresolved Maven placeholder
+${project.build.directory}/

@@ -12,7 +12,7 @@ Web app nhắc lịch chăm sóc bể cá / thủy sinh tại nhà: cho ăn, tha
 
 ## Trạng thái
 
-MVP1 đang phát triển trên nhánh `feature/mvp1`. Đã xong M0 (tài liệu), M1 (scaffold), M2 (schema, repository, nền tảng BE). Xem milestone ở mục 11 của [docs/spec.md](docs/spec.md).
+MVP1 đang phát triển trên nhánh `feature/mvp1`. Đã xong M0 (tài liệu), M1 (scaffold), M2 (schema, repository, nền tảng BE), M3 (đăng ký, đăng nhập). Xem milestone ở mục 11 của [docs/spec.md](docs/spec.md).
 
 ## Chạy local
 
@@ -30,10 +30,17 @@ MVP1 đang phát triển trên nhánh `feature/mvp1`. Đã xong M0 (tài liệu)
    $env:DB_URL = "jdbc:mysql://localhost:3306/fishcaring"
    $env:DB_USERNAME = "<user>"
    $env:DB_PASSWORD = "<password>"
+   $env:JWT_SECRET = "<chuỗi ngẫu nhiên >= 32 ký tự>"
    .\mvnw spring-boot:run
    ```
 
-   Kiểm tra: `http://localhost:8080/actuator/health` trả `{"status":"UP"}`. Cổng 8080 bận thì đặt `$env:SERVER_PORT = "8089"`.
+   `JWT_SECRET` là bắt buộc (thiếu hoặc quá ngắn thì backend không khởi động). Sinh nhanh một giá trị ngẫu nhiên:
+
+   ```powershell
+   $b = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); [Convert]::ToBase64String($b)
+   ```
+
+   Kiểm tra: `http://localhost:8080/actuator/health` trả `{"status":"UP"}`. Cổng 8080 bận thì đặt `$env:SERVER_PORT = "8089"` (và khi chạy frontend đặt `$env:VITE_API_PROXY = "http://localhost:8089"`). Backend chỉ cho phép CORS từ `http://localhost:5173`; nếu frontend chạy ở cổng khác thì đặt `$env:CORS_ALLOWED_ORIGIN` cho khớp.
 
 3. Chạy frontend:
 

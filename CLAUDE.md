@@ -11,7 +11,7 @@ Full requirements live in `docs/spec.md`. Read it before starting any feature.
 - Backend (`be/`): Java 21, Spring Boot 4 (monolith), Maven, Spring Security + JWT, Spring JDBC (`JdbcClient`, không dùng JPA), Flyway, Bean Validation, Lombok
 - Database: MySQL 8 (dev chạy bằng `docker-compose.yml`)
 - Frontend (`fe/`): React 19 + Vite + TypeScript (strict) + Tailwind CSS + React Router + shadcn/ui
-- State và gọi API ở FE: Redux Toolkit (`createSlice`, `createAsyncThunk`). Không dùng TanStack Query
+- State ở FE: Redux Toolkit (`createSlice`, `createAsyncThunk`). Gọi API bằng `axios` qua một file cấu hình và các file service (không dùng `fetch` trực tiếp). Không dùng TanStack Query
 - Thông báo: PWA (service worker) + Web Push (VAPID), kèm danh sách thông báo trong app
 - Test: JUnit 5 + H2 (MODE=MySQL) cho BE; Vitest + Testing Library cho FE
 - Monolith: một Spring Boot app, một database. Không tách microservice
@@ -61,14 +61,16 @@ fish-caring/
   fe/                     # React app
     public/               # manifest, icons, service worker
     src/
-      api/                # HTTP client + endpoint functions
+      api/                # axiosClient.ts: the only axios config (base URL, token, error handling)
+      services/           # one XxxService.ts per resource; only layer that calls axiosClient
+      types/              # API request/response types
       store/              # Redux store, one slice per feature
       pages/              # route-level screens
       components/         # reusable UI
       lib/                # pure helpers (date, schedule text, ...)
 ```
 
-Package/feature-first on the backend: each feature folder has its own controller, service, repository, entity and dto. Keep the layout above unless a task requires a change.
+The backend is organised by layer (not by feature) and the frontend by role. Keep the layout above unless a task requires a change.
 
 ## Language
 
