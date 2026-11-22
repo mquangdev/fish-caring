@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -23,6 +24,7 @@ import com.fishcaring.enums.CareResult;
 import com.fishcaring.exception.ConflictException;
 import com.fishcaring.repository.CareLogRepository;
 import com.fishcaring.repository.CareTaskRepository;
+import com.fishcaring.repository.NotificationRepository;
 import com.fishcaring.repository.TankRepository;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -60,12 +62,14 @@ class CareTaskServiceTest {
     private CareTaskRepository tasks;
     @Mock
     private CareLogRepository logs;
+    @Mock
+    private NotificationRepository notifications;
 
     private CareTaskService service;
 
     @BeforeEach
     void setUp() {
-        service = new CareTaskService(tanks, tasks, logs, new TaskMapper(), CLOCK);
+        service = new CareTaskService(tanks, tasks, logs, notifications, new TaskMapper(), CLOCK);
         TankEntity tank = new TankEntity(TANK, USER, "Be", new BigDecimal("60.0"), null, null, null, null, null, NOW, NOW);
         when(tanks.findByIdAndUserId(TANK, USER)).thenReturn(Optional.of(tank));
         when(tanks.findByIdAndUserId(TANK, OTHER_USER)).thenReturn(Optional.empty());
@@ -519,6 +523,47 @@ class CareTaskServiceTest {
         assertThatThrownBy(() -> service.complete(OTHER_USER, TASK)).isInstanceOf(NotFoundException.class);
         assertThatThrownBy(() -> service.snooze(OTHER_USER, TASK)).isInstanceOf(NotFoundException.class);
         verify(logs, never()).insert(anyLong(), any(), anyLong(), any(), any(), any(), any());
+    }
+
+    // ---- notifications are resolved ----
+
+    @Test
+    void completingSnoozingAndTurningOffResolveTheOpenNotifications() {
+        stored(entity(RepeatType.DAILY, null, LocalTime.of(8, 0), null, true, DUE));
+        service.complete(USER, TASK);
+        service.snooze(USER, TASK);
+        service.setEnabled(USER, TASK, false);
+
+        verify(notifications, times(3)).resolveOpenByTaskId(TASK, NOW);
+    }
+
+    @Test
+    void turningATaskOnAgainClearsAnOldNotificationToo() {
+        stored(entity(RepeatType.DAILY, null, LocalTime.of(18, 0), null, false, null));
+
+        service.setEnabled(USER, TASK, true);
+
+        verify(notifications).resolveOpenByTaskId(TASK, NOW);
+    }
+
+    @Test
+    void changingTheTimingResolvesTheOldNotificationButEditingTextDoesNot() {
+        stored(entity(RepeatType.DAILY, null, LocalTime.of(8, 0), null, true, LocalDateTime.of(2026, 11, 22, 8, 0)));
+
+        service.update(USER, TASK, request(RepeatType.DAILY, null, LocalTime.of(8, 0), null));
+        verify(notifications, never()).resolveOpenByTaskId(anyLong(), any());
+
+        service.update(USER, TASK, request(RepeatType.DAILY, null, LocalTime.of(18, 0), null));
+        verify(notifications).resolveOpenByTaskId(TASK, NOW);
+    }
+
+    @Test
+    void aTaskThatCannotBeCompletedResolvesNothing() {
+        stored(entity(RepeatType.DAILY, null, LocalTime.of(8, 0), null, false, null));
+
+        assertThatThrownBy(() -> service.complete(USER, TASK)).isInstanceOf(ConflictException.class);
+
+        verify(notifications, never()).resolveOpenByTaskId(anyLong(), any());
     }
 
     @Test
