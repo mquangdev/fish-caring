@@ -12,7 +12,7 @@ Web app nhắc lịch chăm sóc bể cá / thủy sinh tại nhà: cho ăn, tha
 
 ## Trạng thái
 
-MVP1 đang phát triển trên nhánh `feature/mvp1`. Đã xong M0 (tài liệu), M1 (scaffold), M2 (schema, repository, nền tảng BE), M3 (đăng ký, đăng nhập), M4 (quản lý bể và cá), M5 (lịch chăm và tính lịch), M6 (hoàn thành, tạm hoãn, trang Hôm nay, lịch sử). Xem milestone ở mục 11 của [docs/spec.md](docs/spec.md).
+MVP1 đang phát triển trên nhánh `feature/mvp1`. Đã xong M0 (tài liệu), M1 (scaffold), M2 (schema, repository, nền tảng BE), M3 (đăng ký, đăng nhập), M4 (quản lý bể và cá), M5 (lịch chăm và tính lịch), M6 (hoàn thành, tạm hoãn, trang Hôm nay, lịch sử), M7 (thông báo trong app, tạo trước 30 phút khi gần tới giờ hẹn). Xem milestone ở mục 11 của [docs/spec.md](docs/spec.md).
 
 ## Chạy local
 
