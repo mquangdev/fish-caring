@@ -127,3 +127,38 @@ export interface ApiErrorBody {
   message?: string
   fieldErrors?: Record<string, string>
 }
+
+export type CareResult = 'DONE' | 'SNOOZED'
+
+/** One line of the care history. `tankId` is null for a task that belongs to no tank. */
+export interface CareLog {
+  id: number
+  tankId: number | null
+  taskId: number | null
+  taskTitle: string
+  result: CareResult
+  dueAt: string
+  actedAt: string
+}
+
+/** A task on the "Hôm nay" screen. `tankName` is null for a task without a tank. */
+export interface TodayItem {
+  id: number
+  tankId: number | null
+  tankName: string | null
+  type: TaskType
+  title: string
+  note: string | null
+  repeatType: RepeatType
+  timeOfDay: string
+  foodName: string | null
+  waterChangePercent: number | null
+  fertilizerMl: number | null
+  nextDueAt: string
+}
+
+/** `due`: due now or overdue, oldest first. `upcoming`: still to come later today. */
+export interface Today {
+  due: TodayItem[]
+  upcoming: TodayItem[]
+}
