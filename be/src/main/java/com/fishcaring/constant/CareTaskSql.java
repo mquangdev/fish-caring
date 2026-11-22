@@ -54,6 +54,15 @@ public final class CareTaskSql {
             ORDER BY enabled DESC, next_due_at IS NULL, next_due_at, id
             """;
 
+    public static final String FIND_ACTIVE_UNTIL_BY_USER_ID = """
+            SELECT t.id, t.tank_id, k.name AS tank_name, t.type, t.title, t.note, t.repeat_type, t.time_of_day,
+                   t.food_name, t.water_change_percent, t.fertilizer_ml, t.next_due_at
+            FROM care_tasks t
+            LEFT JOIN tanks k ON k.id = t.tank_id
+            WHERE t.user_id = :userId AND t.enabled = TRUE AND t.next_due_at < :until
+            ORDER BY t.next_due_at, t.id
+            """;
+
     public static final String UPDATE_ENABLED = """
             UPDATE care_tasks
             SET enabled = :enabled, next_due_at = :nextDueAt, updated_at = :now

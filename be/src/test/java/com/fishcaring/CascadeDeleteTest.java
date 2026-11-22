@@ -20,7 +20,7 @@ class CascadeDeleteTest extends RepositoryTestSupport {
         tankId = newTank(userId, "Be");
         taskId = newTask(tankId, "Cho an");
         fish.insertAll(tankId, List.of(new TankFishData("Neon", 5, FishStatus.ALIVE)), NOW);
-        logs.insert(tankId, taskId, "Cho an", CareResult.DONE, NOW, NOW);
+        logs.insert(userId, tankId, taskId, "Cho an", CareResult.DONE, NOW, NOW);
         notifications.insert(userId, taskId, NOW, "Den gio cho an", NOW);
     }
 
@@ -43,7 +43,7 @@ class CascadeDeleteTest extends RepositoryTestSupport {
 
         assertThat(tasks.deleteByIdAndUserId(taskId, userId)).isTrue();
 
-        List<CareLogEntity> remaining = logs.findRecentByTankId(tankId, 10);
+        List<CareLogEntity> remaining = logs.findRecentByTankId(tankId, userId, 10);
         assertThat(remaining).hasSize(1);
         assertThat(remaining.get(0).getTaskId()).isNull();
         assertThat(remaining.get(0).getTaskTitle()).isEqualTo("Cho an");

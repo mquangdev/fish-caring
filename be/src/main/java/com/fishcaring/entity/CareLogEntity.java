@@ -17,6 +17,8 @@ import lombok.Setter;
 public class CareLogEntity {
 
     private Long id;
+    private Long userId;
+    /** Null for a task that belongs to no tank. */
     private Long tankId;
     private Long taskId;
     private String taskTitle;

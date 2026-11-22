@@ -19,6 +19,9 @@ import com.fishcaring.exception.NotFoundException;
 import com.fishcaring.exception.ValidationException;
 import com.fishcaring.mapper.TaskMapper;
 import com.fishcaring.object.CareTaskData;
+import com.fishcaring.enums.CareResult;
+import com.fishcaring.exception.ConflictException;
+import com.fishcaring.repository.CareLogRepository;
 import com.fishcaring.repository.CareTaskRepository;
 import com.fishcaring.repository.TankRepository;
 import java.math.BigDecimal;
@@ -55,12 +58,14 @@ class CareTaskServiceTest {
     private TankRepository tanks;
     @Mock
     private CareTaskRepository tasks;
+    @Mock
+    private CareLogRepository logs;
 
     private CareTaskService service;
 
     @BeforeEach
     void setUp() {
-        service = new CareTaskService(tanks, tasks, new TaskMapper(), CLOCK);
+        service = new CareTaskService(tanks, tasks, logs, new TaskMapper(), CLOCK);
         TankEntity tank = new TankEntity(TANK, USER, "Be", new BigDecimal("60.0"), null, null, null, null, null, NOW, NOW);
         when(tanks.findByIdAndUserId(TANK, USER)).thenReturn(Optional.of(tank));
         when(tanks.findByIdAndUserId(TANK, OTHER_USER)).thenReturn(Optional.empty());
@@ -393,5 +398,136 @@ class CareTaskServiceTest {
         assertThat(service.listGeneral(USER)).hasSize(1);
         assertThat(service.listGeneral(OTHER_USER)).isEmpty();
         assertThatThrownBy(() -> service.get(OTHER_USER, TASK)).isInstanceOf(NotFoundException.class);
+    }
+
+    // ---- complete and snooze (spec section 10, tests 2 to 7) ----
+
+    private static final LocalDateTime DUE = LocalDateTime.of(2026, 11, 21, 8, 0);
+
+    @Test
+    void completingDailyOnTimeGivesTomorrowAtTheSameTimeAndLogsDone() {
+        stored(entity(RepeatType.DAILY, null, LocalTime.of(8, 0), null, true, DUE));
+
+        service.complete(USER, TASK);
+
+        verify(tasks).setEnabled(TASK, USER, true, LocalDateTime.of(2026, 11, 22, 8, 0), NOW);
+        verify(logs).insert(USER, TANK, TASK, "Cho an", CareResult.DONE, DUE, NOW);
+    }
+
+    @Test
+    void completingDailyThreeDaysLateGivesTomorrowFromNow() {
+        stored(entity(RepeatType.DAILY, null, LocalTime.of(8, 0), null, true, DUE.minusDays(3)));
+
+        service.complete(USER, TASK);
+
+        verify(tasks).setEnabled(TASK, USER, true, LocalDateTime.of(2026, 11, 22, 8, 0), NOW);
+        verify(logs).insert(USER, TANK, TASK, "Cho an", CareResult.DONE, DUE.minusDays(3), NOW);
+    }
+
+    @Test
+    void completingEveryNDaysCountsFromTheCompletionDay() {
+        stored(entity(RepeatType.EVERY_N_DAYS, 7, LocalTime.of(19, 0), LocalDate.of(2026, 11, 1), true,
+                LocalDateTime.of(2026, 11, 14, 19, 0)));
+
+        service.complete(USER, TASK);
+
+        verify(tasks).setEnabled(TASK, USER, true, LocalDateTime.of(2026, 11, 28, 19, 0), NOW);
+    }
+
+    @Test
+    void completingAOneOffTaskTurnsItOff() {
+        stored(entity(RepeatType.ONCE, null, LocalTime.of(8, 0), LocalDate.of(2026, 11, 21), true, DUE));
+
+        service.complete(USER, TASK);
+
+        verify(tasks).setEnabled(TASK, USER, false, null, NOW);
+        verify(logs).insert(USER, TANK, TASK, "Cho an", CareResult.DONE, DUE, NOW);
+    }
+
+    @Test
+    void snoozeMovesTheDueTimeOneDayLaterKeepingTheTimeAndLogsSnoozed() {
+        stored(entity(RepeatType.DAILY, null, LocalTime.of(8, 0), null, true, DUE));
+
+        service.snooze(USER, TASK);
+
+        verify(tasks).setEnabled(TASK, USER, true, LocalDateTime.of(2026, 11, 22, 8, 0), NOW);
+        verify(logs).insert(USER, TANK, TASK, "Cho an", CareResult.SNOOZED, DUE, NOW);
+    }
+
+    @Test
+    void snoozingAnOverdueTaskStillEndsInTheFuture() {
+        stored(entity(RepeatType.DAILY, null, LocalTime.of(8, 0), null, true, DUE.minusDays(6)));
+
+        service.snooze(USER, TASK);
+
+        verify(tasks).setEnabled(TASK, USER, true, LocalDateTime.of(2026, 11, 22, 8, 0), NOW);
+    }
+
+    @Test
+    void snoozingATaskThatIsNotDueYetMovesItOneDayLaterKeepingTheTime() {
+        LocalDateTime tonight = LocalDateTime.of(2026, 11, 21, 21, 0);
+        stored(entity(RepeatType.DAILY, null, LocalTime.of(21, 0), null, true, tonight));
+
+        service.snooze(USER, TASK);
+
+        verify(tasks).setEnabled(TASK, USER, true, LocalDateTime.of(2026, 11, 22, 21, 0), NOW);
+        verify(logs).insert(USER, TANK, TASK, "Cho an", CareResult.SNOOZED, tonight, NOW);
+    }
+
+    @Test
+    void completingATaskEarlyCountsFromTheDueDateSoTheRhythmIsKept() {
+        // due on 24/11, completed early on 21/11: base = max(now, due) = 24/11, so the next one is 1/12 (not 28/11)
+        stored(entity(RepeatType.EVERY_N_DAYS, 7, LocalTime.of(19, 0), LocalDate.of(2026, 11, 14), true,
+                LocalDateTime.of(2026, 11, 24, 19, 0)));
+
+        service.complete(USER, TASK);
+
+        verify(tasks).setEnabled(TASK, USER, true, LocalDateTime.of(2026, 12, 1, 19, 0), NOW);
+    }
+
+    @Test
+    void completingADailyTaskThatIsNotDueYetGivesTomorrow() {
+        LocalDateTime tonight = LocalDateTime.of(2026, 11, 21, 21, 0);
+        stored(entity(RepeatType.DAILY, null, LocalTime.of(21, 0), null, true, tonight));
+
+        service.complete(USER, TASK);
+
+        verify(tasks).setEnabled(TASK, USER, true, LocalDateTime.of(2026, 11, 22, 21, 0), NOW);
+    }
+
+    @Test
+    void snoozingAOneOffTaskKeepsItOn() {
+        stored(entity(RepeatType.ONCE, null, LocalTime.of(8, 0), LocalDate.of(2026, 11, 21), true, DUE));
+
+        service.snooze(USER, TASK);
+
+        verify(tasks).setEnabled(TASK, USER, true, LocalDateTime.of(2026, 11, 22, 8, 0), NOW);
+    }
+
+    @Test
+    void completeAndSnoozeOfATurnedOffTaskAreRejectedAndWriteNothing() {
+        stored(entity(RepeatType.DAILY, null, LocalTime.of(8, 0), null, false, null));
+
+        assertThatThrownBy(() -> service.complete(USER, TASK)).isInstanceOf(ConflictException.class);
+        assertThatThrownBy(() -> service.snooze(USER, TASK)).isInstanceOf(ConflictException.class);
+        verify(logs, never()).insert(anyLong(), any(), anyLong(), any(), any(), any(), any());
+        verify(tasks, never()).setEnabled(anyLong(), anyLong(), any(Boolean.class), any(), any());
+    }
+
+    @Test
+    void completeAndSnoozeOfSomeoneElsesTaskAreNotFoundAndWriteNothing() {
+        assertThatThrownBy(() -> service.complete(OTHER_USER, TASK)).isInstanceOf(NotFoundException.class);
+        assertThatThrownBy(() -> service.snooze(OTHER_USER, TASK)).isInstanceOf(NotFoundException.class);
+        verify(logs, never()).insert(anyLong(), any(), anyLong(), any(), any(), any(), any());
+    }
+
+    @Test
+    void aGeneralTaskIsLoggedWithoutATank() {
+        stored(new CareTaskEntity(TASK, USER, null, TaskType.WATER_CHANGE, "Thay nuoc trun chi", null,
+                RepeatType.DAILY, null, LocalTime.of(8, 0), null, null, 20, null, true, DUE, NOW, NOW));
+
+        service.complete(USER, TASK);
+
+        verify(logs).insert(USER, null, TASK, "Thay nuoc trun chi", CareResult.DONE, DUE, NOW);
     }
 }

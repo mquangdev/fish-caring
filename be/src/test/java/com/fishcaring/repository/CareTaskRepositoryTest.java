@@ -147,4 +147,33 @@ class CareTaskRepositoryTest extends RepositoryTestSupport {
         assertThat(tasks.deleteByIdAndUserId(id, userId)).isTrue();
         assertThat(tasks.findByIdAndUserId(id, userId)).isEmpty();
     }
+
+    @Test
+    void activeUntilReturnsEnabledTasksDueBeforeTheLimitOldestFirstWithTheTankName() {
+        long alice = newUser("a@example.com");
+        long bob = newUser("b@example.com");
+        long tank = newTank(alice, "Be 1");
+        LocalDateTime until = NOW.plusDays(1);
+        long late = newTask(tank, "Muon");
+        long early = newGeneralTask(alice, "Som");
+        long beyond = newTask(tank, "Ngay mai");
+        long off = newTask(tank, "Tat");
+        newGeneralTask(bob, "Cua Bob");
+        tasks.update(late, alice, withDueFor(tank, "Muon", NOW.plusHours(5), true), NOW);
+        tasks.update(early, alice, withDueFor(null, "Som", NOW.minusDays(2), true), NOW);
+        tasks.update(beyond, alice, withDueFor(tank, "Ngay mai", until, true), NOW);
+        tasks.update(off, alice, withDueFor(tank, "Tat", NOW.minusHours(1), false), NOW);
+
+        var items = tasks.findActiveUntilByUserId(alice, until);
+
+        assertThat(items).extracting(i -> i.getTitle()).containsExactly("Som", "Muon");
+        assertThat(items.get(0).getTankId()).isNull();
+        assertThat(items.get(0).getTankName()).isNull();
+        assertThat(items.get(1).getTankName()).isEqualTo("Be 1");
+    }
+
+    private CareTaskData withDueFor(Long tankId, String title, LocalDateTime dueAt, boolean enabled) {
+        return new CareTaskData(tankId, TaskType.FEED, title, null, RepeatType.DAILY, null,
+                LocalTime.of(8, 0), null, null, null, null, enabled, dueAt);
+    }
 }
