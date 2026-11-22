@@ -4,10 +4,13 @@ import com.fishcaring.dto.TaskRequest;
 import com.fishcaring.dto.TaskResponse;
 import com.fishcaring.entity.CareTaskEntity;
 import com.fishcaring.enums.RepeatType;
+import com.fishcaring.enums.CareResult;
+import com.fishcaring.exception.ConflictException;
 import com.fishcaring.exception.NotFoundException;
 import com.fishcaring.exception.ValidationException;
 import com.fishcaring.mapper.TaskMapper;
 import com.fishcaring.object.CareTaskData;
+import com.fishcaring.repository.CareLogRepository;
 import com.fishcaring.repository.CareTaskRepository;
 import com.fishcaring.repository.TankRepository;
 import java.time.Clock;
@@ -16,6 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,12 +37,15 @@ public class CareTaskService {
 
     private final TankRepository tanks;
     private final CareTaskRepository tasks;
+    private final CareLogRepository logs;
     private final TaskMapper mapper;
     private final Clock clock;
 
-    public CareTaskService(TankRepository tanks, CareTaskRepository tasks, TaskMapper mapper, Clock clock) {
+    public CareTaskService(TankRepository tanks, CareTaskRepository tasks, CareLogRepository logs,
+                           TaskMapper mapper, Clock clock) {
         this.tanks = tanks;
         this.tasks = tasks;
+        this.logs = logs;
         this.mapper = mapper;
         this.clock = clock;
     }
@@ -99,6 +106,32 @@ public class CareTaskService {
         return mapper.toResponse(load(userId, taskId));
     }
 
+    /**
+     * Marks the task as done: logs it, then moves {@code nextDueAt} on (a one-off task is turned off).
+     * Only an enabled task can be completed.
+     */
+    @Transactional
+    public TaskResponse complete(long userId, long taskId) {
+        CareTaskEntity task = loadEnabled(userId, taskId);
+        LocalDateTime now = LocalDateTime.now(clock);
+        Optional<LocalDateTime> next = ScheduleCalculator.nextAfterComplete(task.getRepeatType(),
+                task.getTimeOfDay(), task.getIntervalDays(), task.getNextDueAt(), now);
+        logs.insert(userId, task.getTankId(), taskId, task.getTitle(), CareResult.DONE, task.getNextDueAt(), now);
+        tasks.setEnabled(taskId, userId, next.isPresent(), next.orElse(null), now);
+        return mapper.toResponse(load(userId, taskId));
+    }
+
+    /** Postpones the task by one day (keeping the time of day) and logs it. Only an enabled task can be snoozed. */
+    @Transactional
+    public TaskResponse snooze(long userId, long taskId) {
+        CareTaskEntity task = loadEnabled(userId, taskId);
+        LocalDateTime now = LocalDateTime.now(clock);
+        LocalDateTime next = ScheduleCalculator.snooze(task.getNextDueAt(), task.getTimeOfDay(), now);
+        logs.insert(userId, task.getTankId(), taskId, task.getTitle(), CareResult.SNOOZED, task.getNextDueAt(), now);
+        tasks.setEnabled(taskId, userId, true, next, now);
+        return mapper.toResponse(load(userId, taskId));
+    }
+
     @Transactional
     public void delete(long userId, long taskId) {
         if (!tasks.deleteByIdAndUserId(taskId, userId)) {
@@ -108,6 +141,14 @@ public class CareTaskService {
 
     private CareTaskEntity load(long userId, long taskId) {
         return tasks.findByIdAndUserId(taskId, userId).orElseThrow(() -> new NotFoundException(TASK_NOT_FOUND));
+    }
+
+    private CareTaskEntity loadEnabled(long userId, long taskId) {
+        CareTaskEntity task = load(userId, taskId);
+        if (!task.getEnabled() || task.getNextDueAt() == null) {
+            throw new ConflictException("Task is turned off");
+        }
+        return task;
     }
 
     /** A given tank must belong to the user; no tank (null) is fine. */

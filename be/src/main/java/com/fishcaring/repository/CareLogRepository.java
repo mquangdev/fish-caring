@@ -11,13 +11,14 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
-/** The caller must have verified that the tank belongs to the current user. */
+/** Every read takes the user id; a log of a task without a tank has a null tank id. */
 @Repository
 public class CareLogRepository {
 
     private static final RowMapper<CareLogEntity> MAPPER = (rs, rowNum) -> new CareLogEntity(
             rs.getLong("id"),
-            rs.getLong("tank_id"),
+            rs.getLong("user_id"),
+            rs.getObject("tank_id", Long.class),
             rs.getObject("task_id", Long.class),
             rs.getString("task_title"),
             CareResult.valueOf(rs.getString("result")),
@@ -32,10 +33,12 @@ public class CareLogRepository {
         this.jdbc = jdbc;
     }
 
-    public long insert(long tankId, long taskId, String taskTitle, CareResult result,
+    /** {@code tankId} is the tank of the task at the time of the action, or null for a general task. */
+    public long insert(long userId, Long tankId, long taskId, String taskTitle, CareResult result,
                        LocalDateTime dueAt, LocalDateTime now) {
         KeyHolder keys = new GeneratedKeyHolder();
         jdbc.sql(CareLogSql.INSERT)
+                .param("userId", userId)
                 .param("tankId", tankId)
                 .param("taskId", taskId)
                 .param("taskTitle", taskTitle)
@@ -46,9 +49,19 @@ public class CareLogRepository {
         return keys.getKey().longValue();
     }
 
-    public List<CareLogEntity> findRecentByTankId(long tankId, int limit) {
+    public List<CareLogEntity> findRecentByTankId(long tankId, long userId, int limit) {
         return jdbc.sql(CareLogSql.FIND_RECENT_BY_TANK_ID)
                 .param("tankId", tankId)
+                .param("userId", userId)
+                .param("limit", limit)
+                .query(MAPPER)
+                .list();
+    }
+
+    /** Logs of tasks that belong to no tank. */
+    public List<CareLogEntity> findRecentGeneralByUserId(long userId, int limit) {
+        return jdbc.sql(CareLogSql.FIND_RECENT_GENERAL_BY_USER_ID)
+                .param("userId", userId)
                 .param("limit", limit)
                 .query(MAPPER)
                 .list();

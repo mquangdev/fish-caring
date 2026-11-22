@@ -26,14 +26,14 @@ const TANKS = [
 
 describe('TanksPage', () => {
   it('shows a loading skeleton while the list is loading', async () => {
-    mockApi({ 'GET /tasks/general': { status: 200, data: [] }, 'GET /tanks': () => new Promise<MockReply>(() => {}) })
+    mockApi({ 'GET /tasks/general': { status: 200, data: [] }, 'GET /tasks/general/logs': { status: 200, data: [] }, 'GET /tanks': () => new Promise<MockReply>(() => {}) })
     renderList()
 
     expect(await screen.findByLabelText('Đang tải danh sách bể')).toHaveAttribute('aria-busy', 'true')
   })
 
   it('shows a friendly empty state with a call to action', async () => {
-    mockApi({ 'GET /tasks/general': { status: 200, data: [] }, 'GET /tanks': { status: 200, data: [] } })
+    mockApi({ 'GET /tasks/general': { status: 200, data: [] }, 'GET /tasks/general/logs': { status: 200, data: [] }, 'GET /tanks': { status: 200, data: [] } })
     renderList()
 
     expect(await screen.findByText('Chưa có bể nào')).toBeInTheDocument()
@@ -42,7 +42,7 @@ describe('TanksPage', () => {
   })
 
   it('lists the tanks as links with their details', async () => {
-    mockApi({ 'GET /tasks/general': { status: 200, data: [] }, 'GET /tanks': { status: 200, data: TANKS } })
+    mockApi({ 'GET /tasks/general': { status: 200, data: [] }, 'GET /tasks/general/logs': { status: 200, data: [] }, 'GET /tanks': { status: 200, data: TANKS } })
     renderList()
 
     const first = await screen.findByRole('link', { name: /Bể mới/ })
@@ -58,7 +58,7 @@ describe('TanksPage', () => {
   })
 
   it('keeps the order the server sent (newest first)', async () => {
-    mockApi({ 'GET /tasks/general': { status: 200, data: [] }, 'GET /tanks': { status: 200, data: TANKS } })
+    mockApi({ 'GET /tasks/general': { status: 200, data: [] }, 'GET /tasks/general/logs': { status: 200, data: [] }, 'GET /tanks': { status: 200, data: TANKS } })
     renderList()
 
     await screen.findByRole('link', { name: /Bể mới/ })
@@ -68,7 +68,7 @@ describe('TanksPage', () => {
   })
 
   it('opens a tank when its card is tapped', async () => {
-    mockApi({ 'GET /tasks/general': { status: 200, data: [] }, 'GET /tanks': { status: 200, data: TANKS } })
+    mockApi({ 'GET /tasks/general': { status: 200, data: [] }, 'GET /tasks/general/logs': { status: 200, data: [] }, 'GET /tanks': { status: 200, data: TANKS } })
     renderList()
 
     await userEvent.click(await screen.findByRole('link', { name: /Bể mới/ }))
@@ -77,7 +77,7 @@ describe('TanksPage', () => {
   })
 
   it('has one floating "Thêm bể" button when there are tanks', async () => {
-    mockApi({ 'GET /tasks/general': { status: 200, data: [] }, 'GET /tanks': { status: 200, data: TANKS } })
+    mockApi({ 'GET /tasks/general': { status: 200, data: [] }, 'GET /tasks/general/logs': { status: 200, data: [] }, 'GET /tanks': { status: 200, data: TANKS } })
     renderList()
 
     const add = await screen.findByRole('link', { name: 'Thêm bể' })
@@ -85,12 +85,12 @@ describe('TanksPage', () => {
   })
 
   it('shows an error with a retry button, and retry loads the list', async () => {
-    mockApi({ 'GET /tanks': { status: 500, data: { code: 'INTERNAL_ERROR' } }, 'GET /tasks/general': { status: 200, data: [] } })
+    mockApi({ 'GET /tanks': { status: 500, data: { code: 'INTERNAL_ERROR' } }, 'GET /tasks/general': { status: 200, data: [] }, 'GET /tasks/general/logs': { status: 200, data: [] } })
     renderList()
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Máy chủ đang gặp sự cố')
 
-    mockApi({ 'GET /tasks/general': { status: 200, data: [] }, 'GET /tanks': { status: 200, data: TANKS } })
+    mockApi({ 'GET /tasks/general': { status: 200, data: [] }, 'GET /tasks/general/logs': { status: 200, data: [] }, 'GET /tanks': { status: 200, data: TANKS } })
     await userEvent.click(screen.getByRole('button', { name: 'Thử lại' }))
 
     expect(await screen.findByRole('link', { name: /Bể mới/ })).toBeInTheDocument()
@@ -117,7 +117,7 @@ describe('TanksPage', () => {
     }
 
     it('shows an empty hint and an add button when there is no general task', async () => {
-      mockApi({ 'GET /tanks': { status: 200, data: TANKS }, 'GET /tasks/general': { status: 200, data: [] } })
+      mockApi({ 'GET /tanks': { status: 200, data: TANKS }, 'GET /tasks/general': { status: 200, data: [] }, 'GET /tasks/general/logs': { status: 200, data: [] } })
       renderList()
 
       expect(await screen.findByRole('heading', { name: 'Việc chung' })).toBeInTheDocument()
@@ -127,7 +127,7 @@ describe('TanksPage', () => {
     })
 
     it('lists the general tasks even when the user has no tank yet', async () => {
-      mockApi({ 'GET /tanks': { status: 200, data: [] }, 'GET /tasks/general': { status: 200, data: [WORMS] } })
+      mockApi({ 'GET /tanks': { status: 200, data: [] }, 'GET /tasks/general': { status: 200, data: [WORMS] }, 'GET /tasks/general/logs': { status: 200, data: [] } })
       renderList()
 
       expect(await screen.findByText('Thay nước trùn chỉ')).toBeInTheDocument()
@@ -137,21 +137,57 @@ describe('TanksPage', () => {
     })
 
     it('shows a loading skeleton, then an error with retry that loads the list', async () => {
-      mockApi({ 'GET /tanks': { status: 200, data: TANKS }, 'GET /tasks/general': { status: 500, data: { code: 'INTERNAL_ERROR' } } })
+      mockApi({ 'GET /tanks': { status: 200, data: TANKS }, 'GET /tasks/general': { status: 500, data: { code: 'INTERNAL_ERROR' } }, 'GET /tasks/general/logs': { status: 200, data: [] } })
       renderList()
 
       expect(await screen.findByRole('alert')).toHaveTextContent('Máy chủ đang gặp sự cố')
 
-      mockApi({ 'GET /tanks': { status: 200, data: TANKS }, 'GET /tasks/general': { status: 200, data: [WORMS] } })
+      mockApi({ 'GET /tanks': { status: 200, data: TANKS }, 'GET /tasks/general': { status: 200, data: [WORMS] }, 'GET /tasks/general/logs': { status: 200, data: [] } })
       await userEvent.click(screen.getByRole('button', { name: 'Thử lại' }))
 
       expect(await screen.findByText('Thay nước trùn chỉ')).toBeInTheDocument()
     })
 
+    it('shows the history of the general tasks below the list', async () => {
+      mockApi({
+        'GET /tanks': { status: 200, data: TANKS },
+        'GET /tasks/general': { status: 200, data: [WORMS] },
+        'GET /tasks/general/logs': {
+          status: 200,
+          data: [
+            {
+              id: 1,
+              tankId: null,
+              taskId: 11,
+              taskTitle: 'Thay nước trùn chỉ',
+              result: 'SNOOZED',
+              dueAt: '2026-11-22T09:00:00',
+              actedAt: '2026-11-22T09:10:00',
+            },
+          ],
+        },
+      })
+      renderList()
+
+      expect(await screen.findByRole('heading', { name: 'Lịch sử' })).toBeInTheDocument()
+      expect(await screen.findByText('Hoãn đến mai · 22/11/2026 09:10')).toBeInTheDocument()
+    })
+
+    it('says there is no history yet for the general tasks', async () => {
+      mockApi({
+        'GET /tanks': { status: 200, data: TANKS },
+        'GET /tasks/general': { status: 200, data: [WORMS] },
+        'GET /tasks/general/logs': { status: 200, data: [] },
+      })
+      renderList()
+
+      expect(await screen.findByText('Chưa có lịch sử chăm')).toBeInTheDocument()
+    })
+
     it('turns a general task off with its switch and reloads the section', async () => {
       const api = mockApi({
         'GET /tanks': { status: 200, data: TANKS },
-        'GET /tasks/general': { status: 200, data: [WORMS] },
+        'GET /tasks/general': { status: 200, data: [WORMS] }, 'GET /tasks/general/logs': { status: 200, data: [] },
         'PATCH /tasks/11/enabled': { status: 200, data: { ...WORMS, enabled: false, nextDueAt: null } },
       })
       renderList()
@@ -165,7 +201,7 @@ describe('TanksPage', () => {
     it('deletes a general task after confirmation', async () => {
       const api = mockApi({
         'GET /tanks': { status: 200, data: TANKS },
-        'GET /tasks/general': { status: 200, data: [WORMS] },
+        'GET /tasks/general': { status: 200, data: [WORMS] }, 'GET /tasks/general/logs': { status: 200, data: [] },
         'DELETE /tasks/11': { status: 204 },
       })
       renderList()

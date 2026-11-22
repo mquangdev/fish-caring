@@ -65,6 +65,28 @@ class AuthControllerTest {
         return JsonPath.read(result.andReturn().getResponse().getContentAsString(), "$.token");
     }
 
+    // ---- stale tokens on public routes ----
+
+    @Test
+    void loginAndRegisterIgnoreAnOldOrInvalidBearerToken() throws Exception {
+        mvc.perform(post("/api/auth/register").header("Authorization", "Bearer old.expired.token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"stale@example.com\",\"password\":\"secret-pass\",\"displayName\":\"Stale\"}"))
+                .andExpect(status().isCreated());
+
+        mvc.perform(post("/api/auth/login").header("Authorization", "Bearer old.expired.token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"stale@example.com\",\"password\":\"secret-pass\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isNotEmpty());
+    }
+
+    @Test
+    void otherRoutesStillRejectAnInvalidBearerToken() throws Exception {
+        mvc.perform(get("/api/me").header("Authorization", "Bearer old.expired.token"))
+                .andExpect(status().isUnauthorized());
+    }
+
     // ---- register ----
 
     @Test

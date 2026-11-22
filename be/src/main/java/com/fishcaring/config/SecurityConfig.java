@@ -10,6 +10,8 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
+import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -31,6 +33,7 @@ public class SecurityConfig {
                         .authenticationEntryPoint(entryPoint)
                         .accessDeniedHandler(accessDeniedHandler))
                 .oauth2ResourceServer(o -> o
+                        .bearerTokenResolver(publicRoutesIgnoreTokens())
                         .authenticationEntryPoint(entryPoint)
                         .accessDeniedHandler(accessDeniedHandler)
                         .jwt(Customizer.withDefaults()))
@@ -40,6 +43,20 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .anyRequest().authenticated());
         return http.build();
+    }
+
+    /**
+     * Register and login are public, so an old or expired token a client still sends must not make
+     * them fail with 401: the Authorization header is ignored on those two routes.
+     */
+    private static BearerTokenResolver publicRoutesIgnoreTokens() {
+        DefaultBearerTokenResolver delegate = new DefaultBearerTokenResolver();
+        return request -> {
+            String path = request.getRequestURI();
+            boolean publicRoute = HttpMethod.POST.matches(request.getMethod())
+                    && ("/api/auth/register".equals(path) || "/api/auth/login".equals(path));
+            return publicRoute ? null : delegate.resolve(request);
+        };
     }
 
     @Bean

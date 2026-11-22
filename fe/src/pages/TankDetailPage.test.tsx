@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { describe, expect, it, vi } from 'vitest'
 import { mockApi, type MockReply } from '@/test/mockApi'
 import { LOGGED_IN, renderWithProviders } from '@/test/renderWithProviders'
-import type { CareTask, Tank } from '@/types/api'
+import type { CareLog, CareTask, Tank } from '@/types/api'
 import TankDetailPage from './TankDetailPage'
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
@@ -213,6 +213,49 @@ describe('TankDetailPage', () => {
     expect(await screen.findByRole('heading', { name: 'Bể thủy sinh' })).toBeInTheDocument()
   })
 
+  describe('care history', () => {
+    const LOG: CareLog = {
+      id: 1,
+      tankId: 7,
+      taskId: 3,
+      taskTitle: 'Thay nước tuần',
+      result: 'DONE',
+      dueAt: '2026-11-21T19:00:00',
+      actedAt: '2026-11-21T19:05:00',
+    }
+
+    it('lists the recent care history of the tank', async () => {
+      mockApi({
+        'GET /tanks/7': { status: 200, data: TANK },
+        'GET /tanks/7/logs': { status: 200, data: [LOG] },
+      })
+      renderDetail()
+
+      const section = await screen.findByRole('region', { name: 'Lịch sử chăm' })
+      expect(await within(section).findByText('Thay nước tuần')).toBeInTheDocument()
+      expect(within(section).getByText('Hoàn thành · 21/11/2026 19:05')).toBeInTheDocument()
+    })
+
+    it('says so when there is no history yet', async () => {
+      mockApi({ 'GET /tanks/7': { status: 200, data: TANK }, 'GET /tanks/7/logs': { status: 200, data: [] } })
+      renderDetail()
+
+      expect(await screen.findByText('Chưa có lịch sử chăm')).toBeInTheDocument()
+    })
+
+    it('shows an error with retry when the history cannot be loaded', async () => {
+      mockApi({
+        'GET /tanks/7': { status: 200, data: TANK },
+        'GET /tanks/7/logs': { status: 500, data: { code: 'INTERNAL_ERROR' } },
+      })
+      renderDetail()
+
+      const section = await screen.findByRole('region', { name: 'Lịch sử chăm' })
+      expect(await within(section).findByRole('alert')).toHaveTextContent('Máy chủ đang gặp sự cố')
+      expect(within(section).getByRole('button', { name: 'Thử lại' })).toBeInTheDocument()
+    })
+  })
+
   describe('care schedule', () => {
     it('shows an empty state with an add button when there is no task', async () => {
       mockApi({ 'GET /tanks/7': { status: 200, data: TANK } })
@@ -250,7 +293,7 @@ describe('TankDetailPage', () => {
 
       await userEvent.click(await screen.findByRole('switch', { name: 'Bật nhắc “Thay nước tuần”' }))
 
-      await waitFor(() => expect(api.calls.filter((c) => c.method === 'get')).toHaveLength(2))
+      await waitFor(() => expect(api.calls.filter((c) => c.method === 'get' && c.url === '/tanks/7')).toHaveLength(2))
       const patch = api.calls.find((c) => c.method === 'patch')!
       expect(JSON.parse(patch.data as string)).toEqual({ enabled: false })
     })
@@ -297,7 +340,7 @@ describe('TankDetailPage', () => {
 
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
       expect(api.calls.some((c) => c.method === 'delete' && c.url === '/tasks/3')).toBe(true)
-      await waitFor(() => expect(api.calls.filter((c) => c.method === 'get')).toHaveLength(2))
+      await waitFor(() => expect(api.calls.filter((c) => c.method === 'get' && c.url === '/tanks/7')).toHaveLength(2))
     })
 
     it('shows the error in the dialog when deleting a task fails', async () => {

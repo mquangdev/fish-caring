@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { EmptyState } from '@/components/EmptyState'
+import { CareLogList } from '@/components/CareLogList'
 import { TaskList } from '@/components/TaskList'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,6 +13,7 @@ import { formatDate, formatDimensions, formatLiters } from '@/lib/format'
 import { parseId } from '@/lib/ids'
 import { fishStatusLabel } from '@/lib/labels'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import { fetchTankLogs } from '@/store/logsSlice'
 import { clearCurrent, deleteTank, fetchTank } from '@/store/tanksSlice'
 import type { Fish as FishItem, FishStatus } from '@/types/api'
 
@@ -30,12 +32,14 @@ export default function TankDetailPage() {
   const { current, detailStatus, detailError, detailNotFound, deleteStatus, deleteError } = useAppSelector(
     (state) => state.tanks,
   )
+  const { tankLogs, tankLogsFor, tankStatus, tankError } = useAppSelector((state) => state.logs)
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   useEffect(() => {
     dispatch(clearCurrent())
     if (tankId !== null) {
       void dispatch(fetchTank(tankId))
+      void dispatch(fetchTankLogs(tankId))
     }
   }, [dispatch, tankId])
 
@@ -163,6 +167,18 @@ export default function TankDetailPage() {
         ) : (
           <TaskList tasks={tank.tasks} onChanged={() => void dispatch(fetchTank(tank.id))} />
         )}
+      </section>
+
+      <section aria-labelledby="logs-heading" className="flex flex-col gap-3">
+        <h2 id="logs-heading" className="text-lg font-semibold">
+          Lịch sử chăm
+        </h2>
+        <CareLogList
+          logs={tankLogsFor === tank.id ? tankLogs : []}
+          status={tankLogsFor === tank.id ? tankStatus : 'idle'}
+          error={tankError}
+          onRetry={() => void dispatch(fetchTankLogs(tank.id))}
+        />
       </section>
 
       <section aria-labelledby="fish-heading" className="flex flex-col gap-3">

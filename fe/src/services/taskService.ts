@@ -30,6 +30,16 @@ export async function setTaskEnabled(id: number, enabled: boolean): Promise<Care
   return data
 }
 
+export async function completeTask(id: number): Promise<CareTask> {
+  const { data } = await axiosClient.post<CareTask>(`/tasks/${id}/complete`)
+  return data
+}
+
+export async function snoozeTask(id: number): Promise<CareTask> {
+  const { data } = await axiosClient.post<CareTask>(`/tasks/${id}/snooze`)
+  return data
+}
+
 export async function deleteTask(id: number): Promise<void> {
   await axiosClient.delete(`/tasks/${id}`)
 }

@@ -449,8 +449,8 @@ class TankControllerTest {
         long taskId = jdbc.sql("SELECT id FROM care_tasks WHERE tank_id = :id").param("id", id)
                 .query(Long.class).single();
         jdbc.sql("""
-                INSERT INTO care_logs (tank_id, task_id, task_title, result, due_at, acted_at, created_at, updated_at)
-                VALUES (:tankId, :taskId, 'Cho an', 'DONE', NOW(), NOW(), NOW(), NOW())
+                INSERT INTO care_logs (user_id, tank_id, task_id, task_title, result, due_at, acted_at, created_at, updated_at)
+                SELECT user_id, id, :taskId, 'Cho an', 'DONE', NOW(), NOW(), NOW(), NOW() FROM tanks WHERE id = :tankId
                 """).param("tankId", id).param("taskId", taskId).update();
 
         send(delete("/api/tanks/" + id), alice, null).andExpect(status().isNoContent());

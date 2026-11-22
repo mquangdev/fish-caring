@@ -1,9 +1,11 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { CareLogList } from '@/components/CareLogList'
 import { TaskList } from '@/components/TaskList'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import { fetchGeneralLogs } from '@/store/logsSlice'
 import { fetchGeneralTasks } from '@/store/tasksSlice'
 
 /** "Việc chung": the care tasks that belong to no tank (for example changing water for worms). */
@@ -11,8 +13,11 @@ export function GeneralTasksSection() {
   const dispatch = useAppDispatch()
   const { general, generalStatus, generalError } = useAppSelector((state) => state.tasks)
 
+  const { generalLogs, generalStatus: logsStatus, generalError: logsError } = useAppSelector((state) => state.logs)
+
   useEffect(() => {
     void dispatch(fetchGeneralTasks())
+    void dispatch(fetchGeneralLogs())
   }, [dispatch])
 
   const loading = generalStatus === 'idle' || (generalStatus === 'loading' && general.length === 0)
@@ -46,6 +51,14 @@ export function GeneralTasksSection() {
       ) : (
         <TaskList tasks={general} onChanged={() => void dispatch(fetchGeneralTasks())} />
       )}
+
+      <h3 className="pt-2 text-base font-semibold">Lịch sử</h3>
+      <CareLogList
+        logs={generalLogs}
+        status={logsStatus}
+        error={logsError}
+        onRetry={() => void dispatch(fetchGeneralLogs())}
+      />
     </section>
   )
 }

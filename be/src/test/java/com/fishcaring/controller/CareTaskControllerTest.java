@@ -278,8 +278,8 @@ class CareTaskControllerTest {
     void deleteRemovesTheTaskAndKeepsItsLogsWithoutATaskId() throws Exception {
         long id = createTask(alice, aliceTank, task("FEED", "Cho an", "DAILY", "08:00"));
         jdbc.sql("""
-                INSERT INTO care_logs (tank_id, task_id, task_title, result, due_at, acted_at, created_at, updated_at)
-                VALUES (:tank, :task, 'Cho an', 'DONE', NOW(), NOW(), NOW(), NOW())
+                INSERT INTO care_logs (user_id, tank_id, task_id, task_title, result, due_at, acted_at, created_at, updated_at)
+                SELECT user_id, id, :task, 'Cho an', 'DONE', NOW(), NOW(), NOW(), NOW() FROM tanks WHERE id = :tank
                 """).param("tank", aliceTank).param("task", id).update();
 
         send(delete("/api/tasks/" + id), alice, null).andExpect(status().isNoContent());

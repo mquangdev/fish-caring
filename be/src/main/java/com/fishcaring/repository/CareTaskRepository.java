@@ -2,6 +2,7 @@ package com.fishcaring.repository;
 
 import com.fishcaring.constant.CareTaskSql;
 import com.fishcaring.entity.CareTaskEntity;
+import com.fishcaring.entity.TodayItemEntity;
 import com.fishcaring.enums.RepeatType;
 import com.fishcaring.enums.TaskType;
 import com.fishcaring.object.CareTaskData;
@@ -41,6 +42,20 @@ public class CareTaskRepository {
             rs.getObject("next_due_at", LocalDateTime.class),
             rs.getObject("created_at", LocalDateTime.class),
             rs.getObject("updated_at", LocalDateTime.class));
+
+    private static final RowMapper<TodayItemEntity> TODAY_MAPPER = (rs, rowNum) -> new TodayItemEntity(
+            rs.getLong("id"),
+            rs.getObject("tank_id", Long.class),
+            rs.getString("tank_name"),
+            TaskType.valueOf(rs.getString("type")),
+            rs.getString("title"),
+            rs.getString("note"),
+            RepeatType.valueOf(rs.getString("repeat_type")),
+            rs.getObject("time_of_day", LocalTime.class),
+            rs.getString("food_name"),
+            rs.getObject("water_change_percent", Integer.class),
+            rs.getBigDecimal("fertilizer_ml"),
+            rs.getObject("next_due_at", LocalDateTime.class));
 
     private final JdbcClient jdbc;
 
@@ -100,6 +115,15 @@ public class CareTaskRepository {
                 .param("userId", userId)
                 .query(MAPPER)
                 .optional();
+    }
+
+    /** Enabled tasks of the user due before {@code until} (overdue ones included), oldest first. */
+    public List<TodayItemEntity> findActiveUntilByUserId(long userId, LocalDateTime until) {
+        return jdbc.sql(CareTaskSql.FIND_ACTIVE_UNTIL_BY_USER_ID)
+                .param("userId", userId)
+                .param("until", until)
+                .query(TODAY_MAPPER)
+                .list();
     }
 
     /** Tasks that belong to no tank, in display order. */

@@ -58,6 +58,16 @@ public class CareTaskController {
         return taskService.setEnabled(currentUser.id(), taskId, request.getEnabled());
     }
 
+    @PostMapping("/{taskId}/complete")
+    public TaskResponse complete(@PathVariable long taskId) {
+        return taskService.complete(currentUser.id(), taskId);
+    }
+
+    @PostMapping("/{taskId}/snooze")
+    public TaskResponse snooze(@PathVariable long taskId) {
+        return taskService.snooze(currentUser.id(), taskId);
+    }
+
     @DeleteMapping("/{taskId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable long taskId) {
