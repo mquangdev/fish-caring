@@ -16,7 +16,7 @@ public final class TankFishSql {
             SELECT id, tank_id, species_name, quantity, status, created_at, updated_at
             FROM tank_fish
             WHERE tank_id = :tankId
-            ORDER BY id
+            ORDER BY id DESC
             """;
 
     public static final String DELETE_ALL_BY_TANK_ID = """

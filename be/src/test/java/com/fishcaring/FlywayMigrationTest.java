@@ -31,6 +31,26 @@ class FlywayMigrationTest extends RepositoryTestSupport {
         assertThat(columnsOf("tank_fish")).contains("status");
     }
 
+    @Test
+    void tanksHaveDimensionsAndNoType() {
+        assertThat(columnsOf("tanks")).doesNotContain("type");
+        assertThat(columnsOf("tanks")).contains("volume_liters", "length_cm", "width_cm", "height_cm");
+    }
+
+    @Test
+    void tankVolumeAndDimensionsAreDecimalsWithOneFractionDigit() {
+        for (String column : List.of("volume_liters", "length_cm", "width_cm", "height_cm")) {
+            Integer scale = jdbc.sql("""
+                    SELECT numeric_scale FROM information_schema.columns
+                    WHERE LOWER(table_name) = 'tanks' AND LOWER(column_name) = :column
+                    """)
+                    .param("column", column)
+                    .query(Integer.class)
+                    .single();
+            assertThat(scale).as(column + " scale").isEqualTo(1);
+        }
+    }
+
     private List<String> columnsOf(String table) {
         return jdbc.sql("SELECT LOWER(column_name) FROM information_schema.columns WHERE LOWER(table_name) = :table")
                 .param("table", table)

@@ -1,7 +1,6 @@
 package com.fishcaring;
 
 import com.fishcaring.enums.RepeatType;
-import com.fishcaring.enums.TankType;
 import com.fishcaring.enums.TaskType;
 import com.fishcaring.object.CareTaskData;
 import com.fishcaring.object.TankData;
@@ -12,6 +11,7 @@ import com.fishcaring.repository.PushSubscriptionRepository;
 import com.fishcaring.repository.TankFishRepository;
 import com.fishcaring.repository.TankRepository;
 import com.fishcaring.repository.UserRepository;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,7 +61,7 @@ public abstract class RepositoryTestSupport {
     }
 
     protected long newTank(long userId, String name) {
-        return tanks.insert(userId, new TankData(name, 60, TankType.PLANTED, null, null), NOW);
+        return tanks.insert(userId, TankData.builder().name(name).volumeLiters(new BigDecimal("60.0")).build(), NOW);
     }
 
     protected CareTaskData taskData(String title) {

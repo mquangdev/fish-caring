@@ -1,6 +1,6 @@
 package com.fishcaring.entity;
 
-import com.fishcaring.enums.TankType;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
@@ -20,8 +20,10 @@ public class TankEntity {
     private Long id;
     private Long userId;
     private String name;
-    private Integer volumeLiters;
-    private TankType type;
+    private BigDecimal volumeLiters;
+    private BigDecimal lengthCm;
+    private BigDecimal widthCm;
+    private BigDecimal heightCm;
     private LocalDate setupDate;
     private String note;
     private LocalDateTime createdAt;

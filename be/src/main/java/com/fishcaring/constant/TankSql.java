@@ -8,46 +8,33 @@ import lombok.NoArgsConstructor;
 public final class TankSql {
 
     public static final String INSERT = """
-            INSERT INTO tanks (user_id, name, volume_liters, type, setup_date, note, created_at, updated_at)
-            VALUES (:userId, :name, :volumeLiters, :type, :setupDate, :note, :now, :now)
+            INSERT INTO tanks (user_id, name, volume_liters, length_cm, width_cm, height_cm, setup_date, note,
+                               created_at, updated_at)
+            VALUES (:userId, :name, :volumeLiters, :lengthCm, :widthCm, :heightCm, :setupDate, :note, :now, :now)
             """;
 
     public static final String UPDATE = """
             UPDATE tanks
-            SET name = :name, volume_liters = :volumeLiters, type = :type,
-                setup_date = :setupDate, note = :note, updated_at = :now
+            SET name = :name, volume_liters = :volumeLiters, length_cm = :lengthCm, width_cm = :widthCm,
+                height_cm = :heightCm, setup_date = :setupDate, note = :note, updated_at = :now
             WHERE id = :tankId AND user_id = :userId
             """;
 
     public static final String FIND_BY_ID_AND_USER_ID = """
-            SELECT id, user_id, name, volume_liters, type, setup_date, note, created_at, updated_at
+            SELECT id, user_id, name, volume_liters, length_cm, width_cm, height_cm, setup_date, note,
+                   created_at, updated_at
             FROM tanks
             WHERE id = :tankId AND user_id = :userId
             """;
 
-    public static final String FIND_ALL_BY_USER_ID = """
-            SELECT id, user_id, name, volume_liters, type, setup_date, note, created_at, updated_at
-            FROM tanks
-            WHERE user_id = :userId
-            ORDER BY created_at DESC, id DESC
-            """;
-
-    public static final String COUNT_BY_USER_ID = """
-            SELECT COUNT(*)
-            FROM tanks
-            WHERE user_id = :userId
-            """;
-
-    public static final String COUNT_BY_USER_ID_AND_NAME_IGNORE_CASE = """
-            SELECT COUNT(*)
-            FROM tanks
-            WHERE user_id = :userId AND LOWER(name) = LOWER(:name)
-            """;
-
-    public static final String COUNT_BY_USER_ID_AND_NAME_IGNORE_CASE_EXCLUDING_ID = """
-            SELECT COUNT(*)
-            FROM tanks
-            WHERE user_id = :userId AND LOWER(name) = LOWER(:name) AND id <> :excludeTankId
+    /** Tank list: each tank with its number of care tasks and the earliest due time of its enabled tasks. */
+    public static final String FIND_ALL_SUMMARIES_BY_USER_ID = """
+            SELECT k.id, k.name, k.volume_liters, k.created_at,
+                   (SELECT COUNT(*) FROM care_tasks t WHERE t.tank_id = k.id) AS task_count,
+                   (SELECT MIN(t.next_due_at) FROM care_tasks t WHERE t.tank_id = k.id AND t.enabled = TRUE) AS next_due_at
+            FROM tanks k
+            WHERE k.user_id = :userId
+            ORDER BY k.created_at DESC, k.id DESC
             """;
 
     public static final String DELETE_BY_ID_AND_USER_ID = """
