@@ -179,9 +179,10 @@ class TankControllerTest {
 
     private void insertTask(long tankId, boolean enabled, String nextDueAt) {
         jdbc.sql("""
-                INSERT INTO care_tasks (tank_id, type, title, repeat_type, time_of_day, enabled, next_due_at,
+                INSERT INTO care_tasks (user_id, tank_id, type, title, repeat_type, time_of_day, enabled, next_due_at,
                                         created_at, updated_at)
-                VALUES (:tankId, 'FEED', 'Cho an', 'DAILY', '08:00:00', :enabled, :nextDueAt, NOW(), NOW())
+                SELECT user_id, id, 'FEED', 'Cho an', 'DAILY', '08:00:00', :enabled, :nextDueAt, NOW(), NOW()
+                FROM tanks WHERE id = :tankId
                 """)
                 .param("tankId", tankId)
                 .param("enabled", enabled)

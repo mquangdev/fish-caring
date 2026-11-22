@@ -65,7 +65,7 @@ class TankMapperTest {
                 new TankFishEntity(3L, 7L, "Guppy", 4, FishStatus.ALIVE, NOW, NOW),
                 new TankFishEntity(2L, 7L, "Neon", 10, FishStatus.DEAD, NOW, NOW));
 
-        TankResponse response = mapper.toResponse(tank, fish);
+        TankResponse response = mapper.toResponse(tank, fish, List.of());
 
         assertThat(response.getId()).isEqualTo(7L);
         assertThat(response.getVolumeLiters()).isEqualByComparingTo("60.5");

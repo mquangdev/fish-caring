@@ -21,6 +21,8 @@ import com.fishcaring.exception.ValidationException;
 import com.fishcaring.mapper.TankMapper;
 import com.fishcaring.object.TankData;
 import com.fishcaring.object.TankFishData;
+import com.fishcaring.mapper.TaskMapper;
+import com.fishcaring.repository.CareTaskRepository;
 import com.fishcaring.repository.TankFishRepository;
 import com.fishcaring.repository.TankRepository;
 import java.math.BigDecimal;
@@ -54,12 +56,14 @@ class TankServiceTest {
     private TankRepository tanks;
     @Mock
     private TankFishRepository fish;
+    @Mock
+    private CareTaskRepository careTasks;
 
     private TankService service;
 
     @BeforeEach
     void setUp() {
-        service = new TankService(tanks, fish, new TankMapper(), CLOCK);
+        service = new TankService(tanks, fish, careTasks, new TankMapper(), new TaskMapper(), CLOCK);
         TankEntity tank = new TankEntity(TANK, USER, "Be", new BigDecimal("60.0"), null, null, null, null, null, NOW, NOW);
         when(tanks.findByIdAndUserId(TANK, USER)).thenReturn(Optional.of(tank));
         when(tanks.findByIdAndUserId(TANK, OTHER_USER)).thenReturn(Optional.empty());

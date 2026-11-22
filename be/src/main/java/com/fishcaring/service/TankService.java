@@ -7,7 +7,9 @@ import com.fishcaring.entity.TankEntity;
 import com.fishcaring.exception.NotFoundException;
 import com.fishcaring.exception.ValidationException;
 import com.fishcaring.mapper.TankMapper;
+import com.fishcaring.mapper.TaskMapper;
 import com.fishcaring.object.TankFishData;
+import com.fishcaring.repository.CareTaskRepository;
 import com.fishcaring.repository.TankFishRepository;
 import com.fishcaring.repository.TankRepository;
 import java.math.BigDecimal;
@@ -29,13 +31,18 @@ public class TankService {
 
     private final TankRepository tanks;
     private final TankFishRepository fish;
+    private final CareTaskRepository tasks;
     private final TankMapper mapper;
+    private final TaskMapper taskMapper;
     private final Clock clock;
 
-    public TankService(TankRepository tanks, TankFishRepository fish, TankMapper mapper, Clock clock) {
+    public TankService(TankRepository tanks, TankFishRepository fish, CareTaskRepository tasks,
+                       TankMapper mapper, TaskMapper taskMapper, Clock clock) {
         this.tanks = tanks;
         this.fish = fish;
+        this.tasks = tasks;
         this.mapper = mapper;
+        this.taskMapper = taskMapper;
         this.clock = clock;
     }
 
@@ -109,7 +116,8 @@ public class TankService {
     }
 
     private TankResponse toResponse(TankEntity tank) {
-        return mapper.toResponse(tank, fish.findAllByTankId(tank.getId()));
+        return mapper.toResponse(tank, fish.findAllByTankId(tank.getId()),
+                tasks.findAllByTankId(tank.getId()).stream().map(taskMapper::toResponse).toList());
     }
 
     /**

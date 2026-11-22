@@ -64,13 +64,25 @@ public abstract class RepositoryTestSupport {
         return tanks.insert(userId, TankData.builder().name(name).volumeLiters(new BigDecimal("60.0")).build(), NOW);
     }
 
+    /** Task data for a general task (no tank). */
     protected CareTaskData taskData(String title) {
-        return new CareTaskData(TaskType.FEED, title, null, RepeatType.DAILY, null,
-                LocalTime.of(8, 0), null, true, NOW.plusDays(1));
+        return taskData(null, title);
     }
 
+    protected CareTaskData taskData(Long tankId, String title) {
+        return new CareTaskData(tankId, TaskType.FEED, title, null, RepeatType.DAILY, null,
+                LocalTime.of(8, 0), null, null, null, null, true, NOW.plusDays(1));
+    }
+
+    /** A task of the tank, owned by the tank's owner. */
     protected long newTask(long tankId, String title) {
-        return tasks.insert(tankId, taskData(title), NOW);
+        long userId = jdbc.sql("SELECT user_id FROM tanks WHERE id = :id").param("id", tankId)
+                .query(Long.class).single();
+        return tasks.insert(userId, taskData(tankId, title), NOW);
+    }
+
+    protected long newGeneralTask(long userId, String title) {
+        return tasks.insert(userId, taskData(title), NOW);
     }
 
     protected int count(String table) {

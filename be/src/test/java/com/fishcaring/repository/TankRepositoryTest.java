@@ -144,9 +144,9 @@ class TankRepositoryTest extends RepositoryTestSupport {
         long enabledLater = newTask(tankId, "Thay nuoc");
         long disabledEarliest = newTask(tankId, "Bon phan");
         newTask(other, "Cua be khac");
-        tasks.update(enabledSoon, userId, withDue("Cho an", soon, true), NOW);
-        tasks.update(enabledLater, userId, withDue("Thay nuoc", later, true), NOW);
-        tasks.update(disabledEarliest, userId, withDue("Bon phan", NOW.plusHours(1), false), NOW);
+        tasks.update(enabledSoon, userId, withDue(tankId, "Cho an", soon, true), NOW);
+        tasks.update(enabledLater, userId, withDue(tankId, "Thay nuoc", later, true), NOW);
+        tasks.update(disabledEarliest, userId, withDue(tankId, "Bon phan", NOW.plusHours(1), false), NOW);
 
         TankSummaryEntity summary = tanks.findAllSummariesByUserId(userId).stream()
                 .filter(t -> t.getId() == tankId).findFirst().orElseThrow();
@@ -177,8 +177,8 @@ class TankRepositoryTest extends RepositoryTestSupport {
         assertThat(tanks.findAllSummariesByUserId(userId)).hasSize(2);
     }
 
-    private CareTaskData withDue(String title, LocalDateTime dueAt, boolean enabled) {
-        return new CareTaskData(TaskType.FEED, title, null, RepeatType.DAILY, null,
-                LocalTime.of(8, 0), null, enabled, dueAt);
+    private CareTaskData withDue(long tankId, String title, LocalDateTime dueAt, boolean enabled) {
+        return new CareTaskData(tankId, TaskType.FEED, title, null, RepeatType.DAILY, null,
+                LocalTime.of(8, 0), null, null, null, null, enabled, dueAt);
     }
 }

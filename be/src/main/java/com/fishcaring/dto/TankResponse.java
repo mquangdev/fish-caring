@@ -25,4 +25,5 @@ public class TankResponse {
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
     private final List<FishResponse> fish;
+    private final List<TaskResponse> tasks;
 }

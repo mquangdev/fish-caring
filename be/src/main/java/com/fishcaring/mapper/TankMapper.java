@@ -4,6 +4,7 @@ import com.fishcaring.dto.FishRequest;
 import com.fishcaring.dto.FishResponse;
 import com.fishcaring.dto.TankRequest;
 import com.fishcaring.dto.TankResponse;
+import com.fishcaring.dto.TaskResponse;
 import com.fishcaring.dto.TankSummaryResponse;
 import com.fishcaring.entity.TankEntity;
 import com.fishcaring.entity.TankFishEntity;
@@ -38,7 +39,7 @@ public class TankMapper {
                 .build();
     }
 
-    public TankResponse toResponse(TankEntity tank, List<TankFishEntity> fish) {
+    public TankResponse toResponse(TankEntity tank, List<TankFishEntity> fish, List<TaskResponse> tasks) {
         return TankResponse.builder()
                 .id(tank.getId())
                 .name(tank.getName())
@@ -51,6 +52,7 @@ public class TankMapper {
                 .createdAt(tank.getCreatedAt())
                 .updatedAt(tank.getUpdatedAt())
                 .fish(fish.stream().map(this::toFishResponse).toList())
+                .tasks(tasks)
                 .build();
     }
 

@@ -2,6 +2,7 @@ package com.fishcaring.entity;
 
 import com.fishcaring.enums.RepeatType;
 import com.fishcaring.enums.TaskType;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -20,6 +21,7 @@ import lombok.Setter;
 public class CareTaskEntity {
 
     private Long id;
+    private Long userId;
     private Long tankId;
     private TaskType type;
     private String title;
@@ -28,6 +30,9 @@ public class CareTaskEntity {
     private Integer intervalDays;
     private LocalTime timeOfDay;
     private LocalDate startDate;
+    private String foodName;
+    private Integer waterChangePercent;
+    private BigDecimal fertilizerMl;
     private Boolean enabled;
     private LocalDateTime nextDueAt;
     private LocalDateTime createdAt;

@@ -17,7 +17,7 @@ import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
 /**
- * Tasks have no {@code user_id}; ownership is checked through the tank they belong to, so every
+ * A task has its own {@code user_id} (it may belong to no tank), so every
  * lookup that takes a task id also takes the user id.
  */
 @Repository
@@ -25,7 +25,8 @@ public class CareTaskRepository {
 
     private static final RowMapper<CareTaskEntity> MAPPER = (rs, rowNum) -> new CareTaskEntity(
             rs.getLong("id"),
-            rs.getLong("tank_id"),
+            rs.getLong("user_id"),
+            rs.getObject("tank_id", Long.class),
             TaskType.valueOf(rs.getString("type")),
             rs.getString("title"),
             rs.getString("note"),
@@ -33,6 +34,9 @@ public class CareTaskRepository {
             rs.getObject("interval_days", Integer.class),
             rs.getObject("time_of_day", LocalTime.class),
             rs.getObject("start_date", LocalDate.class),
+            rs.getString("food_name"),
+            rs.getObject("water_change_percent", Integer.class),
+            rs.getBigDecimal("fertilizer_ml"),
             rs.getBoolean("enabled"),
             rs.getObject("next_due_at", LocalDateTime.class),
             rs.getObject("created_at", LocalDateTime.class),
@@ -44,11 +48,12 @@ public class CareTaskRepository {
         this.jdbc = jdbc;
     }
 
-    /** The caller must have verified that the tank belongs to the current user. */
-    public long insert(long tankId, CareTaskData data, LocalDateTime now) {
+    /** The caller must have verified that the tank (if any) belongs to the user. */
+    public long insert(long userId, CareTaskData data, LocalDateTime now) {
         KeyHolder keys = new GeneratedKeyHolder();
         jdbc.sql(CareTaskSql.INSERT)
-                .param("tankId", tankId)
+                .param("userId", userId)
+                .param("tankId", data.getTankId())
                 .param("type", data.getType().name())
                 .param("title", data.getTitle())
                 .param("note", data.getNote())
@@ -56,6 +61,9 @@ public class CareTaskRepository {
                 .param("intervalDays", data.getIntervalDays())
                 .param("timeOfDay", data.getTimeOfDay())
                 .param("startDate", data.getStartDate())
+                .param("foodName", data.getFoodName())
+                .param("waterChangePercent", data.getWaterChangePercent())
+                .param("fertilizerMl", data.getFertilizerMl())
                 .param("enabled", data.getEnabled())
                 .param("nextDueAt", data.getNextDueAt())
                 .param("now", now)
@@ -63,11 +71,12 @@ public class CareTaskRepository {
         return keys.getKey().longValue();
     }
 
-    /** Returns true when a task of this user was updated. */
+    /** Returns true when a task of this user was updated. The tank (if any) must belong to the user. */
     public boolean update(long taskId, long userId, CareTaskData data, LocalDateTime now) {
         int rows = jdbc.sql(CareTaskSql.UPDATE)
                 .param("taskId", taskId)
                 .param("userId", userId)
+                .param("tankId", data.getTankId())
                 .param("type", data.getType().name())
                 .param("title", data.getTitle())
                 .param("note", data.getNote())
@@ -75,6 +84,9 @@ public class CareTaskRepository {
                 .param("intervalDays", data.getIntervalDays())
                 .param("timeOfDay", data.getTimeOfDay())
                 .param("startDate", data.getStartDate())
+                .param("foodName", data.getFoodName())
+                .param("waterChangePercent", data.getWaterChangePercent())
+                .param("fertilizerMl", data.getFertilizerMl())
                 .param("enabled", data.getEnabled())
                 .param("nextDueAt", data.getNextDueAt())
                 .param("now", now)
@@ -90,19 +102,20 @@ public class CareTaskRepository {
                 .optional();
     }
 
+    /** Tasks that belong to no tank, in display order. */
+    public List<CareTaskEntity> findAllGeneralByUserId(long userId) {
+        return jdbc.sql(CareTaskSql.FIND_ALL_GENERAL_BY_USER_ID)
+                .param("userId", userId)
+                .query(MAPPER)
+                .list();
+    }
+
     /** The caller must have verified that the tank belongs to the current user. */
     public List<CareTaskEntity> findAllByTankId(long tankId) {
         return jdbc.sql(CareTaskSql.FIND_ALL_BY_TANK_ID)
                 .param("tankId", tankId)
                 .query(MAPPER)
                 .list();
-    }
-
-    public int countByTankId(long tankId) {
-        return jdbc.sql(CareTaskSql.COUNT_BY_TANK_ID)
-                .param("tankId", tankId)
-                .query(Integer.class)
-                .single();
     }
 
     /** Returns true when a task of this user was updated. */
