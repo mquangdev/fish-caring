@@ -78,6 +78,8 @@ Java 21, Spring Boot 4, Maven, Spring JDBC (`JdbcClient`), Flyway, MySQL 8, Spri
   - repository: chạy SQL thật trên H2 (`MODE=MySQL`) với Flyway migration đã áp dụng
   - controller: MockMvc, phủ các trường hợp thành công, 400, 401 và 404
   - có ít nhất một test chứng minh user A không đọc hay sửa được dữ liệu của user B
+- BẮT BUỘC: **tên class test phải kết thúc bằng `Test`** (kể cả test tích hợp full stack, ví dụ `TankControllerTest`). Maven Surefire chỉ chạy `*Test`, `*Tests`, `Test*`; lớp tên `*IT` sẽ bị bỏ qua mà không báo lỗi. Sau khi thêm test mới, kiểm tra file tương ứng có trong `target/surefire-reports`
+- Thứ tự cá trong bể: request gửi cá theo thứ tự hiển thị (cá mới lên trước); `TankService` lưu theo thứ tự đảo ngược và `TankFishSql.FIND_ALL_BY_TANK_ID` đọc `ORDER BY id DESC`, nên đọc ra đúng thứ tự đã gửi
 - `./mvnw verify` phải pass trước khi báo hoàn thành
 
 ## Checklist trước khi báo hoàn thành

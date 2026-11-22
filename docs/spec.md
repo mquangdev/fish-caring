@@ -59,9 +59,13 @@ Toàn hệ thống dùng một múi giờ duy nhất là giờ Việt Nam (`Asia
 - Hoàn thành hoặc hoãn một việc thì thông báo tương ứng chuyển sang trạng thái đã xử lý (`resolved`).
 - Xoá bể thì xoá luôn cá, lịch, thông báo và nhật ký chăm của bể đó. Xoá bể cần hộp thoại xác nhận.
 - Xoá lịch cần xác nhận; nhật ký đã ghi của lịch đó vẫn giữ theo bể, hiển thị theo tiêu đề đã lưu lúc ghi.
-- Tên bể không rỗng, tối đa 100 ký tự, không trùng (không phân biệt hoa thường) trong cùng một người dùng. Việc kiểm tra làm ở service bằng `LOWER(name)`, không có ràng buộc unique ở DB. Trên MySQL (`utf8mb4_unicode_ci`) phép so sánh cũng không phân biệt dấu, nên "Bể" và "Be" bị coi là trùng.
-- Thể tích bể (lít) là số nguyên dương, có thể để trống.
-- Mỗi bể tối đa 20 lịch chăm, mỗi người dùng tối đa 30 bể (chặn lạm dụng, có thể chỉnh sau).
+- Tên bể không rỗng, tối đa 100 ký tự (được cắt khoảng trắng hai đầu). **Cho phép trùng tên**, kể cả trong cùng một người dùng; không có giới hạn số bể.
+- **Kích thước bể là không bắt buộc** và nhập theo một trong hai cách: (a) nhập **dài, rộng, cao** (cm) để hệ thống tính thể tích, hoặc (b) nhập thẳng **thể tích** (lít). Nhập kích thước thì phải nhập **đủ cả ba cạnh** hoặc không nhập cạnh nào. Mỗi cạnh từ 0,1 đến 1.000 cm; thể tích từ 0,1 đến 10.000 lít; cả hai tối đa 1 chữ số thập phân.
+- Khi có dài, rộng, cao thì **server tính thể tích** = dài x rộng x cao / 1000, làm tròn nửa lên 1 chữ số thập phân (60 x 30 x 36 cm = 64,8 lít) và bỏ qua thể tích client gửi; thể tích tính ra vượt 10.000 lít hoặc dưới 0,1 lít bị từ chối. Frontend dùng cùng công thức để hiện thể tích ngay khi gõ. Kích thước đã nhập được lưu để sửa lại; sửa bể mà không gửi kích thước thì kích thước bị xoá.
+- Bể không có thông tin "loại bể". Ghi chú tối đa 1.000 ký tự. Ngày setup có thể để trống.
+- Cá trong bể: tối đa 50 dòng mỗi bể; mỗi dòng có tên loài (1 đến 100 ký tự), số lượng (số nguyên từ 1 đến 9.999) và trạng thái `ALIVE` (còn sống) hoặc `DEAD` (đã chết). Danh sách cá hiển thị **cá mới lên trước**; danh sách bể hiển thị **bể mới tạo lên trước**.
+- Sửa bể gửi lại toàn bộ danh sách cá và thay thế danh sách cũ (đúng thứ tự đang hiển thị).
+- Mỗi bể tối đa 20 lịch chăm (chặn lạm dụng, có thể chỉnh sau).
 - Người dùng không bao giờ truy cập được dữ liệu của người khác; truy cập sai id trả 404.
 
 ## 5. Màn hình (mobile-first)
@@ -87,7 +91,7 @@ Toàn hệ thống dùng một múi giờ duy nhất là giờ Việt Nam (`Asia
 
 ### 5.3 Danh sách bể `/tanks` và chi tiết bể `/tanks/:id`
 - Danh sách: thẻ bể (tên, thể tích, số lịch, việc kế tiếp), nút nổi "Thêm bể"
-- Form bể: tên, thể tích (lít), loại bể (`PLANTED` thủy sinh, `FISH_ONLY` cá cảnh, `OTHER`), ngày setup, ghi chú, danh sách cá (tên loài + số lượng + trạng thái còn sống/đã chết, thêm/xoá nhanh; đàn cá chết một phần thì tách thành hai dòng)
+- Form bể: tên; kích thước (không bắt buộc) chọn bằng nút phân đoạn "Nhập thể tích" (một ô lít) hoặc "Nhập kích thước" (ba ô dài, rộng, cao tính bằng cm, hiện thể tích ngay khi gõ); ngày setup; ghi chú; danh sách cá (tên loài + số lượng + trạng thái còn sống/đã chết, thêm/xoá nhanh; đàn cá chết một phần thì tách thành hai dòng)
 - Chi tiết bể: thông tin bể, danh sách lịch chăm (bật/tắt nhanh, sửa, xoá, hiển thị "Mỗi ngày 08:00" / "Mỗi 7 ngày 19:00" / "Một lần 25/11 21:00" và lần đến hạn kế tiếp), nút "Thêm lịch chăm", lịch sử chăm gần đây (50 mục, mới nhất trước)
 
 ### 5.4 Form lịch chăm
@@ -117,9 +121,10 @@ users
   id, email (unique, lowercase), password_hash, display_name
 
 tanks
-  id, user_id (FK), name, volume_liters (nullable), type ('PLANTED'|'FISH_ONLY'|'OTHER'),
+  id, user_id (FK), name, volume_liters (DECIMAL(7,1), nullable),
+  length_cm, width_cm, height_cm (DECIMAL(5,1), nullable; đủ cả ba hoặc không có),
   setup_date (nullable), note (nullable)
-  index (user_id, name)   -- tên bể không trùng trong một user: kiểm tra ở service, không ràng buộc ở DB
+  index (user_id, name)   -- chỉ để tra cứu nhanh; cho phép trùng tên
 
 tank_fish
   id, tank_id (FK), species_name, quantity (int >= 1),
@@ -172,11 +177,25 @@ POST   /api/auth/login             { email, password } -> { token, user }
 GET    /api/me                     -> user
 PATCH  /api/me                     { displayName? } -> user
 
-GET    /api/tanks                  -> [tank + taskCount + nextDueAt]
-POST   /api/tanks                  -> tank
-GET    /api/tanks/{id}             -> tank + fish + tasks
-PUT    /api/tanks/{id}             -> tank (gồm danh sách cá)
-DELETE /api/tanks/{id}
+GET    /api/tanks                  -> [{ id, name, volumeLiters, taskCount, nextDueAt }] (bể mới tạo trước)
+POST   /api/tanks                  TankRequest -> 201 tank
+GET    /api/tanks/{id}             -> tank (M4: gồm `fish`; thêm `tasks` ở M5)
+PUT    /api/tanks/{id}             TankRequest -> tank (thay toàn bộ danh sách cá)
+DELETE /api/tanks/{id}             -> 204 (xoá cả cá, lịch, nhật ký, thông báo của bể)
+```
+
+`TankRequest` / `tank`:
+
+```
+TankRequest { name, volumeLiters?, lengthCm?, widthCm?, heightCm?, setupDate?, note?, fish?: [FishRequest] }
+FishRequest { speciesName, quantity, status }          // status: "ALIVE" | "DEAD"
+tank        { id, name, volumeLiters, lengthCm, widthCm, heightCm, setupDate, note, createdAt, updatedAt,
+              fish: [{ id, speciesName, quantity, status }] }   // cá mới lên trước
+```
+
+Kích thước: gửi đủ `lengthCm`, `widthCm`, `heightCm` (server tính `volumeLiters`, bỏ qua giá trị client gửi) hoặc chỉ gửi `volumeLiters`; gửi thiếu một hai cạnh trả `400` với khoá lỗi là tên các cạnh còn thiếu, thể tích tính ra ngoài khoảng 0,1 đến 10.000 lít trả `400` với khoá `volumeLiters`. Số thập phân JSON, ví dụ `64.8`. Trường `type` cũ (nếu client còn gửi) bị bỏ qua. Danh sách `fish` trong request là thứ tự hiển thị (cá mới lên trước). Lỗi validation của một dòng cá có khoá dạng `fish[0].quantity`.
+
+```
 
 GET    /api/tanks/{id}/tasks       -> [task]
 POST   /api/tanks/{id}/tasks       -> task
@@ -226,7 +245,7 @@ Service/controller:
 10. Hoàn thành/hoãn chuyển thông báo sang `RESOLVED`
 11. User A gọi id tank/task/notification của user B nhận 404
 12. Đăng ký trùng email nhận 409; đăng nhập sai nhận 401 với thông báo chung
-13. Tên bể trùng (khác hoa thường) bị từ chối
+13. Tên bể trùng vẫn được tạo; cá mới thêm luôn đứng đầu danh sách sau khi lưu
 
 ## 11. Milestone MVP1 (nhánh `feature/mvp1`)
 
@@ -252,8 +271,8 @@ Trạng thái: `[x]` xong, `[ ]` chưa làm.
 - Phạm vi FE: trang `/login`, `/register`, slice `auth`, API client gắn JWT, 401 thì về `/login`, route bảo vệ, đăng xuất ở `/settings`, khung điều hướng đáy màn hình
 - Tiêu chí hoàn thành: đăng ký rồi đăng nhập được trên trình duyệt, tải lại trang vẫn giữ phiên, gọi API không token nhận 401; test mục 10 số 12 pass
 
-### [ ] M4. Quản lý bể
-- Phạm vi BE: CRUD `/api/tanks` (gồm danh sách cá), quy tắc tên bể và giới hạn số bể (mục 4.3), mọi truy vấn lọc theo user
+### [x] M4. Quản lý bể
+- Phạm vi BE: CRUD `/api/tanks` (gồm danh sách cá), các giới hạn dữ liệu (mục 4.3), `taskCount` và `nextDueAt` trong danh sách bể, nhập kích thước (dài, rộng, cao) hoặc thể tích với thể tích do server tính (migration `V2`, bỏ loại bể), mọi truy vấn lọc theo user
 - Phạm vi FE: `/tanks`, `/tanks/new`, `/tanks/:id`, `/tanks/:id/edit`, slice `tanks`, hộp thoại xác nhận xoá, trạng thái rỗng/tải/lỗi
 - Tiêu chí hoàn thành: tạo, sửa, xoá bể và cá trong bể trên điện thoại (390px); user A không truy cập được bể của user B (404); test mục 10 số 11 và 13 pass
 
@@ -295,5 +314,7 @@ Trạng thái: `[x]` xong, `[ ]` chưa làm.
 - **Thông báo:** PWA + Web Push và danh sách thông báo trong app; chưa làm native app/email
 - **Hoãn:** MVP chỉ có một mức "hoãn đến mai" (+1 ngày, giữ giờ)
 - **Lịch:** chỉ có `DAILY`, `EVERY_N_DAYS`, `ONCE`; chưa có lịch theo thứ trong tuần hay nhiều mốc giờ trong ngày
-- **Dữ liệu cá:** nhập tay (tên + số lượng), chưa có thư viện loài
+- **Dữ liệu cá:** nhập tay (tên loài + số lượng + còn sống/đã chết), chưa có thư viện loài
+- **Bể:** cho phép trùng tên bể, không giới hạn số bể mỗi người dùng; bể mới tạo và cá mới thêm hiển thị lên trước
+- **Không có "loại bể"** (bỏ để giao diện đỡ rối). Kích thước bể nhập theo thể tích hoặc theo dài, rộng, cao; thể tích có 1 chữ số thập phân và do server tính khi có kích thước
 - **Múi giờ:** toàn hệ thống dùng giờ Việt Nam (UTC+7) cố định, lưu `LocalDateTime`; không có múi giờ theo người dùng

@@ -52,7 +52,7 @@ fish-caring/
       object/             # internal value objects (TankData, CareTaskData, ...)
       constant/           # SQL constants, one XxxSql class per table
       mapper/             # entity <-> dto conversion
-      enums/              # TankType, TaskType, RepeatType, ...
+      enums/              # FishStatus, TaskType, RepeatType, ...
       config/             # SecurityConfig, TimeConfig (Clock), AppProperties
       exception/          # domain exceptions, GlobalExceptionHandler
     src/main/resources/
