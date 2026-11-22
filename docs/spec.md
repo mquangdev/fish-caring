@@ -57,6 +57,7 @@ Toàn hệ thống dùng một múi giờ duy nhất là giờ Việt Nam (`Asia
   - `ONCE`: đúng `startDate` lúc `timeOfDay`
 - **Hoàn thành**: lấy `base = max(now, nextDueAt)` rồi lấy ngày của `base` (giờ Việt Nam). `DAILY`: ngày kế tiếp = ngày đó + 1. `EVERY_N_DAYS`: ngày đó + `intervalDays`. Ghép với `timeOfDay`. `ONCE`: tắt lịch (`enabled = false`). Nghĩa là hoàn thành trễ không làm dồn lịch, hoàn thành sớm không bị nhắc lại trong cùng ngày.
 - **Tạm hoãn**: `nextDueAt = nextDueAt + 1 ngày` (cộng đúng 1 ngày lịch, giữ nguyên giờ). Nếu việc đã quá hạn nhiều ngày, hoãn vẫn chỉ cộng 1 ngày từ `nextDueAt` hiện tại; nếu kết quả vẫn ở quá khứ thì dùng cùng giờ của ngày mai tính từ `now`.
+- Hoàn thành hoặc tạm hoãn **chỉ áp dụng cho lịch đang bật**: lịch đang tắt trả `409 CONFLICT` (không ghi nhật ký). Hoàn thành hoặc hoãn **sớm** (việc chưa đến giờ) cũng được, cả ở API lẫn giao diện (trang Hôm nay có hai nút cho cả nhóm "Sắp tới hôm nay"). Vì `base = max(now, nextDueAt)` nên hoàn thành sớm tính từ ngày hẹn chứ không từ ngày bấm: lịch hằng ngày hẹn 21:00 tối nay, bấm lúc 10:00 thì lần sau là 21:00 ngày mai; lịch "Mỗi 7 ngày" hẹn ngày 24/11, hoàn thành ngày 21/11 thì lần sau là 1/12 (giữ nhịp). Hoãn việc chưa đến giờ cộng đúng 1 ngày vào `nextDueAt` (21:00 tối nay thành 21:00 ngày mai). Hoãn một lịch `ONCE` vẫn giữ lịch bật.
 - Tạm hoãn không đổi lịch lặp: lần đến hạn sau của lịch được tính lại từ lúc hoàn thành như trên.
 - Sửa `timeOfDay`, kiểu lặp, số ngày hoặc ngày bắt đầu thì tính lại `nextDueAt` như khi tạo mới. Sửa tiêu đề, ghi chú, loại việc hay các ô riêng **không** tính lại (không làm mất lần đã hoãn).
 - Tắt lịch (`enabled = false`): `nextDueAt = null`, không tạo thông báo; bật lại thì tính lại `nextDueAt` như khi tạo mới. Bật lại lịch `ONCE` đã qua thời điểm trả `400` ở khoá `startDate` (người dùng cần sửa ngày giờ).
@@ -69,6 +70,7 @@ Toàn hệ thống dùng một múi giờ duy nhất là giờ Việt Nam (`Asia
 - Xoá bể thì xoá luôn cá, lịch gắn bể đó, thông báo và nhật ký chăm của bể đó. **Lịch không gắn bể ("Việc chung") không bị ảnh hưởng.** Xoá bể cần hộp thoại xác nhận.
 - **Lịch chăm có thể không gắn bể nào** ("Việc chung", ví dụ thay nước cho trùn chỉ): `tankId` là `null`. Lịch luôn thuộc về một người dùng (`user_id`). Sửa lịch được đổi bể gắn kèm (từ bể này sang bể khác, từ bể sang không gắn bể và ngược lại); đổi bể **không** tính lại `nextDueAt`. `tankId` trỏ tới bể của người khác trả `404`.
 - Xoá lịch cần xác nhận; nhật ký đã ghi của lịch đó vẫn giữ theo bể, hiển thị theo tiêu đề đã lưu lúc ghi.
+- **Nhật ký là ảnh chụp lúc ghi**: lưu tiêu đề và bể (hoặc không có bể) tại thời điểm hoàn thành/hoãn; sau đó đổi tên hay đổi bể của lịch không sửa nhật ký cũ. Mỗi nhật ký có chủ riêng (`user_id`). Danh sách nhật ký mặc định 50 mục, mới nhất trước; `limit` được giữ trong khoảng 1 đến 100.
 - Tên bể không rỗng, tối đa 100 ký tự (được cắt khoảng trắng hai đầu). **Cho phép trùng tên**, kể cả trong cùng một người dùng; không có giới hạn số bể.
 - **Kích thước bể là không bắt buộc** và nhập theo một trong hai cách: (a) nhập **dài, rộng, cao** (cm) để hệ thống tính thể tích, hoặc (b) nhập thẳng **thể tích** (lít). Nhập kích thước thì phải nhập **đủ cả ba cạnh** hoặc không nhập cạnh nào. Mỗi cạnh từ 0,1 đến 1.000 cm; thể tích từ 0,1 đến 10.000 lít; cả hai tối đa 1 chữ số thập phân.
 - Khi có dài, rộng, cao thì **server tính thể tích** = dài x rộng x cao / 1000, làm tròn nửa lên 1 chữ số thập phân (60 x 30 x 36 cm = 64,8 lít) và bỏ qua thể tích client gửi; thể tích tính ra vượt 10.000 lít hoặc dưới 0,1 lít bị từ chối. Frontend dùng cùng công thức để hiện thể tích ngay khi gõ. Kích thước đã nhập được lưu để sửa lại; sửa bể mà không gửi kích thước thì kích thước bị xoá.
@@ -94,10 +96,10 @@ Toàn hệ thống dùng một múi giờ duy nhất là giờ Việt Nam (`Asia
 - Đăng xuất ở trang Cài đặt
 
 ### 5.2 Hôm nay `/`
-- Nhóm "Đến giờ / Quá hạn": mỗi việc một thẻ gồm tên bể, loại việc, tiêu đề, ghi chú, giờ hẹn; hai nút lớn "Hoàn thành" và "Hoãn đến mai"
-- Nhóm "Sắp tới hôm nay": các việc còn lại trong ngày, chỉ xem
+- Nhóm "Đến giờ / Quá hạn": lịch bật có `nextDueAt <= now` (cũ nhất trước); mỗi việc một thẻ gồm tên bể (hoặc **"Việc chung"** nếu không gắn bể), loại việc, tiêu đề, chi tiết theo loại, ghi chú, giờ hẹn, nhãn "Quá hạn" khi thuộc ngày trước hôm nay; hai nút lớn "Hoàn thành" và "Hoãn đến mai" (khoá trong lúc gửi, xong thì tải lại danh sách và báo bằng toast)
+- Nhóm "Sắp tới hôm nay": lịch bật có `now < nextDueAt < 00:00 ngày mai` (giờ Việt Nam, sớm nhất trước); cũng có hai nút "Hoàn thành" và "Hoãn đến mai" (kiểu nút nhẹ, vì nút chính của màn hình là "Hoàn thành" của việc đã đến giờ)
 - Trạng thái rỗng thân thiện ("Hôm nay không có việc gì, nghỉ ngơi thôi")
-- Banner mời bật thông báo nếu chưa bật (xem mục 7)
+- Banner mời bật thông báo nếu chưa bật (xem mục 7; làm ở M8)
 
 ### 5.3 Danh sách bể `/tanks` và chi tiết bể `/tanks/:id`
 - Danh sách: thẻ bể (tên, thể tích, số lịch, việc kế tiếp), nút nổi "Thêm bể". Bên dưới có mục **"Việc chung"**: danh sách lịch không gắn bể (cùng thẻ lịch với công tắc bật/tắt, sửa, xoá như ở chi tiết bể), nút phụ "Thêm lịch chung" và trạng thái rỗng "Chưa có việc chung. Ví dụ: thay nước cho trùn chỉ."
@@ -155,7 +157,8 @@ care_tasks
   // migration V4: thêm user_id (điền từ bể cũ), cho phép tank_id null
 
 care_logs
-  id, tank_id (nullable FK, cascade; null cho lịch không gắn bể), task_id (nullable, SET NULL khi xoá lịch), task_title,
+  id, user_id (FK, cascade; migration V5), tank_id (nullable FK, cascade; null cho lịch không gắn bể),
+  task_id (nullable, SET NULL khi xoá lịch), task_title,
   result ('DONE'|'SNOOZED'), due_at, acted_at
 
 notifications
@@ -231,11 +234,15 @@ GET    /api/tasks/{taskId}         -> task
 PUT    /api/tasks/{taskId}         TaskRequest -> task (đổi tankId được)
 PATCH  /api/tasks/{taskId}/enabled { enabled } -> task
 DELETE /api/tasks/{taskId}         -> 204 (nhật ký của lịch được giữ, task_id thành null)
-POST   /api/tasks/{taskId}/complete -> task (đã có nextDueAt mới)
-POST   /api/tasks/{taskId}/snooze   -> task (đã lùi 1 ngày)
-GET    /api/tanks/{id}/logs?limit=50 -> [careLog]
+POST   /api/tasks/{taskId}/complete -> task (đã có nextDueAt mới; lịch tắt: 409)
+POST   /api/tasks/{taskId}/snooze   -> task (đã lùi 1 ngày; lịch tắt: 409)
+GET    /api/tanks/{id}/logs?limit=50 -> [careLog]   (mới nhất trước; bể của người khác: 404)
+GET    /api/tasks/general/logs?limit=50 -> [careLog] (nhật ký của lịch không gắn bể)
 
 GET    /api/today                  -> { due: [item], upcoming: [item] }
+       // careLog { id, tankId (null nếu không gắn bể), taskId (null nếu đã xoá lịch), taskTitle, result, dueAt, actedAt }
+       // item { id, tankId, tankName (null = Việc chung), type, title, note, repeatType, timeOfDay, foodName,
+       //        waterChangePercent, fertilizerMl, nextDueAt }
 GET    /api/notifications?limit=50 -> [notification]
 GET    /api/notifications/unread-count -> { count }
 POST   /api/notifications/read-all
@@ -278,6 +285,8 @@ Service/controller:
 14. Tạo lịch không gắn bể (`tankId` bỏ trống) thành công và chỉ xuất hiện ở `GET /api/tasks/general` của đúng người đó; đổi bể gắn kèm (bể ↔ không gắn bể) giữ nguyên `nextDueAt`; xoá bể không xoá lịch không gắn bể
 15. User A không xem, sửa, bật/tắt, xoá được lịch không gắn bể của user B, và không gắn lịch của mình vào bể của user B (`404`)
 16. Ô ngày nhận `dd/MM/yyyy`, tự thêm dấu `/`, từ chối ngày không có thật (30/02, 29/02 năm không nhuận) và gửi lên server dạng `yyyy-MM-dd`
+17. Hoàn thành/hoãn lịch tắt trả 409 và không ghi nhật ký; hoàn thành lịch không gắn bể ghi nhật ký không có bể và xuất hiện ở `GET /api/tasks/general/logs`
+18. `GET /api/today` chia đúng nhóm theo `now` và 00:00 ngày mai, bỏ lịch tắt và lịch của người khác
 
 ## 11. Milestone MVP1 (nhánh `feature/mvp1`)
 
@@ -311,12 +320,12 @@ Trạng thái: `[x]` xong, `[ ]` chưa làm.
 ### [x] M5. Lịch chăm và `ScheduleCalculator`
 - Phạm vi BE: lớp thuần `ScheduleCalculator` (`firstDue`, `nextAfterComplete`, `snooze`) theo mục 4.2; `POST /api/tasks`, `GET /api/tasks/{id}`, `GET /api/tasks/general`, `PUT/PATCH/DELETE /api/tasks/{id}`, `tasks` trong chi tiết bể, ô riêng theo loại việc (migration `V3`), lịch không gắn bể và đổi bể gắn kèm (migration `V4`), không giới hạn số lịch
 - Phạm vi FE: danh sách lịch trong chi tiết bể và mục "Việc chung" ở `/tanks`, form lịch chăm (mục 5.4) với ô "Gắn với" và dòng xem trước "Lần nhắc đầu tiên", ô ngày `dd/MM/yyyy`, bật/tắt nhanh, slice `tasks`
-- **TODO cho M6/M7 (spec chưa quy định, cần hỏi lại khi làm):** nhật ký của lịch không gắn bể hiện ở đâu (chi tiết bể không áp dụng); thẻ ở trang Hôm nay và nội dung thông báo hiện gì thay cho tên bể ("Việc chung"?)
+- Đã chốt cho lịch không gắn bể: nhật ký hiện ở mục "Lịch sử" trong "Việc chung" ở `/tanks`; thẻ ở trang Hôm nay và nội dung thông báo (M7) ghi "Việc chung" thay cho tên bể
 - Tiêu chí hoàn thành: tạo được ba kiểu lặp `DAILY`, `EVERY_N_DAYS`, `ONCE` và `nextDueAt` đúng theo giờ Việt Nam; test mục 10 số 1 đến 7 pass (đây là phần quan trọng nhất cần test kỹ)
 
-### [ ] M6. Hoàn thành, tạm hoãn, trang Hôm nay, lịch sử
-- Phạm vi BE: `POST /api/tasks/{id}/complete`, `POST /api/tasks/{id}/snooze`, ghi `CareLog`, `GET /api/today`, `GET /api/tanks/{id}/logs`
-- Phạm vi FE: trang `/` (Hôm nay) với nhóm "Đến giờ / Quá hạn" và "Sắp tới", nút "Hoàn thành" và "Hoãn đến mai", lịch sử chăm trong chi tiết bể
+### [x] M6. Hoàn thành, tạm hoãn, trang Hôm nay, lịch sử
+- Phạm vi BE: `POST /api/tasks/{id}/complete`, `POST /api/tasks/{id}/snooze`, ghi `CareLog` (migration `V5`: nhật ký có `user_id`), `GET /api/today`, `GET /api/tanks/{id}/logs`, `GET /api/tasks/general/logs`
+- Phạm vi FE: trang `/` (Hôm nay) với nhóm "Đến giờ / Quá hạn" và "Sắp tới hôm nay", nút "Hoàn thành" và "Hoãn đến mai", mục "Lịch sử chăm" trong chi tiết bể và "Lịch sử" trong "Việc chung", slices `today` và `logs`
 - Tiêu chí hoàn thành: bấm Hoàn thành thì `nextDueAt` chuyển sang lần kế tiếp đúng quy tắc, bấm Hoãn thì lùi đúng 1 ngày giữ giờ, mỗi hành động có một dòng nhật ký; việc `ONCE` hoàn thành thì tự tắt
 
 ### [ ] M7. Thông báo trong app
@@ -350,6 +359,7 @@ Trạng thái: `[x]` xong, `[ ]` chưa làm.
 - **Dữ liệu cá:** nhập tay (tên loài + số lượng + còn sống/đã chết), chưa có thư viện loài
 - **Bể:** cho phép trùng tên bể, không giới hạn số bể mỗi người dùng; bể mới tạo và cá mới thêm hiển thị lên trước
 - **Không có "loại bể"** (bỏ để giao diện đỡ rối). Kích thước bể nhập theo thể tích hoặc theo dài, rộng, cao; thể tích có 1 chữ số thập phân và do server tính khi có kích thước
+- **Hoàn thành/hoãn:** chỉ lịch đang bật (tắt thì 409), được làm cả khi chưa đến giờ (hoàn thành sớm tính từ ngày hẹn, hoãn cộng 1 ngày giữ giờ); nhật ký là ảnh chụp lúc ghi và có chủ riêng; trang Hôm nay chia "Đến giờ / Quá hạn" và "Sắp tới hôm nay" (đến 00:00 ngày mai)
 - **Lịch không gắn bể:** lịch chăm có thể không thuộc bể nào ("Việc chung", ví dụ thay nước cho trùn chỉ); lịch có chủ riêng (`user_id`) và đổi bể gắn kèm được
 - **Ô ngày:** luôn gõ và hiển thị `dd/MM/yyyy` (không theo ngôn ngữ trình duyệt)
 - **Lịch chăm:** giữ "loại việc" kèm một ô riêng không bắt buộc cho từng loại (thức ăn, % nước, ml phân nước); không giới hạn số lịch mỗi bể; lịch một lần phải ở tương lai
