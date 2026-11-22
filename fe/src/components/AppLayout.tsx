@@ -1,6 +1,8 @@
 import { Bell, CalendarCheck, Fish, Settings, type LucideIcon } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
+import { useNotificationPolling } from '@/hooks/useNotificationPolling'
 import { cn } from '@/lib/utils'
+import { useAppSelector } from '@/store/hooks'
 
 interface NavItem {
   to: string
@@ -18,6 +20,9 @@ const NAV_ITEMS: NavItem[] = [
 
 /** Page frame with the bottom navigation, used by every screen that needs a logged-in user. */
 export function AppLayout() {
+  useNotificationPolling()
+  const unreadCount = useAppSelector((state) => state.notifications.unreadCount)
+
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col md:max-w-2xl">
       <main className="flex-1 px-4 pt-6 pb-28">
@@ -49,9 +54,24 @@ export function AppLayout() {
                         isActive && 'bg-accent',
                       )}
                     >
-                      <Icon className="size-5" aria-hidden="true" />
+                      <span className="relative">
+                        <Icon className="size-5" aria-hidden="true" />
+                        {to === '/notifications' && unreadCount > 0 ? (
+                          <span
+                            aria-hidden="true"
+                            className="absolute -top-2 -right-3 flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] leading-4 font-bold text-white"
+                          >
+                            {unreadCount > 9 ? '9+' : unreadCount}
+                          </span>
+                        ) : null}
+                      </span>
                     </span>
-                    <span>{label}</span>
+                    <span>
+                      {label}
+                      {to === '/notifications' && unreadCount > 0 ? (
+                        <span className="sr-only">, {unreadCount} chưa đọc</span>
+                      ) : null}
+                    </span>
                   </>
                 )}
               </NavLink>
