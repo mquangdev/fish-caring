@@ -3,6 +3,7 @@ import { setTokenProvider, setUnauthorizedHandler } from '@/api/axiosClient'
 import authReducer, { signOut } from './authSlice'
 import tanksReducer from './tanksSlice'
 import logsReducer from './logsSlice'
+import notificationsReducer from './notificationsSlice'
 import tasksReducer from './tasksSlice'
 import todayReducer from './todaySlice'
 
@@ -14,6 +15,7 @@ export const store = configureStore({
     tasks: tasksReducer,
     today: todayReducer,
     logs: logsReducer,
+    notifications: notificationsReducer,
   },
 })
 

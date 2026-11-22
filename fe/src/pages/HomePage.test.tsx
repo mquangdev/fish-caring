@@ -190,6 +190,19 @@ describe('HomePage', () => {
     await waitFor(() => expect(toast.success).toHaveBeenCalled())
   })
 
+  it('reloads the unread count after completing or snoozing, because the notification is resolved', async () => {
+    const api = mockApi({
+      'GET /today': { status: 200, data: { due: [FEED], upcoming: [] } },
+      'GET /notifications/unread-count': { status: 200, data: { count: 0 } },
+      'POST /tasks/3/snooze': { status: 200, data: { id: 3, nextDueAt: '2026-11-22T08:00:00' } },
+    })
+    renderHome()
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Hoãn đến mai' }))
+
+    await waitFor(() => expect(api.calls.some((c) => c.url === '/notifications/unread-count')).toBe(true))
+  })
+
   it('snoozing a task calls the API and tells the user the new time', async () => {
     const api = mockApi({
       'GET /today': { status: 200, data: { due: [FEED], upcoming: [] } },

@@ -25,7 +25,7 @@ Người nuôi cá, chơi thủy sinh tại nhà, dùng điện thoại là chí
 - Một **người dùng** (User) có nhiều **bể** (Tank).
 - Một bể có danh sách **cá** (TankFish: tên loài + số lượng, nhập tay) và nhiều **lịch chăm** (CareTask).
 - Một lịch chăm có: loại việc, tiêu đề, ghi chú, giờ nhắc, kiểu lặp, và `nextDueAt` (thời điểm đến hạn kế tiếp, giờ Việt Nam).
-- Khi `nextDueAt <= now` và lịch đang bật, hệ thống tạo đúng **một thông báo** cho lần đến hạn đó, gửi push (nếu người dùng đã bật), và hiện lịch trong trang "Hôm nay" ở nhóm "Đến giờ / Quá hạn".
+- **Trước 30 phút** khi gần tới giờ hẹn (`nextDueAt <= now + 30 phút`) và lịch đang bật, hệ thống tạo đúng **một thông báo** cho lần hẹn đó, gửi push (nếu người dùng đã bật), và hiện lịch trong trang "Hôm nay" ở nhóm "Đến giờ / Quá hạn".
 - Người dùng có hai hành động trên một việc đã đến hạn:
   - **Hoàn thành**: ghi một bản ghi `CareLog` (kết quả `DONE`) và tính `nextDueAt` kế tiếp.
   - **Tạm hoãn**: ghi `CareLog` (kết quả `SNOOZED`), lùi `nextDueAt` đúng 1 ngày (giữ nguyên giờ). Đến thời điểm mới, hệ thống thông báo lại.
@@ -64,9 +64,10 @@ Toàn hệ thống dùng một múi giờ duy nhất là giờ Việt Nam (`Asia
 
 ### 4.3 Quy tắc biên
 
+- Thông báo được tạo **trước 30 phút** so với giờ hẹn (hằng số, chưa cấu hình được). `due_at` của thông báo là giờ hẹn thật. Nội dung lưu sẵn: "Bể Mini 30L: sắp đến giờ cho ăn (08:00)" khi giờ hẹn còn ở tương lai, "Bể Mini 30L: đến giờ cho ăn" khi đã đến hoặc quá giờ hẹn; lịch không gắn bể ghi "Việc chung" thay cho tên bể.
 - Mỗi (`taskId`, `dueAt`) chỉ có một thông báo (không tạo trùng khi scheduler chạy lại).
 - Việc quá hạn nhiều ngày không sinh nhiều thông báo; mỗi lịch chỉ có tối đa một thông báo chưa xử lý.
-- Hoàn thành hoặc hoãn một việc thì thông báo tương ứng chuyển sang trạng thái đã xử lý (`resolved`).
+- Hoàn thành hoặc hoãn một việc thì thông báo tương ứng chuyển sang trạng thái đã xử lý (`resolved`). Tắt lịch, bật lại lịch và sửa thời gian của lịch (giờ, kiểu lặp, số ngày, ngày bắt đầu) cũng làm thông báo chưa xử lý của lịch đó thành đã xử lý, để thông báo cũ không chặn thông báo cho lần hẹn mới. Sửa tiêu đề hay ghi chú thì không.
 - Xoá bể thì xoá luôn cá, lịch gắn bể đó, thông báo và nhật ký chăm của bể đó. **Lịch không gắn bể ("Việc chung") không bị ảnh hưởng.** Xoá bể cần hộp thoại xác nhận.
 - **Lịch chăm có thể không gắn bể nào** ("Việc chung", ví dụ thay nước cho trùn chỉ): `tankId` là `null`. Lịch luôn thuộc về một người dùng (`user_id`). Sửa lịch được đổi bể gắn kèm (từ bể này sang bể khác, từ bể sang không gắn bể và ngược lại); đổi bể **không** tính lại `nextDueAt`. `tankId` trỏ tới bể của người khác trả `404`.
 - Xoá lịch cần xác nhận; nhật ký đã ghi của lịch đó vẫn giữ theo bể, hiển thị theo tiêu đề đã lưu lúc ghi.
@@ -114,8 +115,9 @@ Toàn hệ thống dùng một múi giờ duy nhất là giờ Việt Nam (`Asia
 
 ### 5.5 Thông báo `/notifications`
 - Danh sách thông báo mới nhất trước: nội dung ("Bể Mini 30L: đến giờ cho ăn"), thời gian, trạng thái chưa đọc/đã đọc/đã xử lý
-- Bấm vào thông báo mở trang "Hôm nay"; có nút "Đánh dấu đã đọc tất cả"
-- FE gọi lại danh sách và số chưa đọc mỗi 60 giây khi tab đang mở (thunk polling)
+- Bấm vào thông báo thì đánh dấu đã đọc (`POST /api/notifications/{id}/read`) và mở trang "Hôm nay" (việc nằm ở "Sắp tới hôm nay" cho đến khi đến giờ); có nút "Đánh dấu đã đọc tất cả" (chỉ hiện khi có thông báo chưa đọc). Trạng thái hiện bằng chữ kèm biểu tượng: Chưa đọc / Đã đọc / Đã xử lý
+- Thanh điều hướng có chấm số thông báo chưa đọc trên chuông ("9+" khi nhiều hơn 9, kèm chữ cho trình đọc màn hình)
+- FE gọi lại số chưa đọc mỗi 60 giây khi tab đang hiển thị (và ngay khi tab hiển thị lại; không gọi khi tab ẩn); trang thông báo cũng tải lại danh sách mỗi 60 giây. Sau khi hoàn thành/hoãn ở trang Hôm nay thì tải lại số chưa đọc ngay
 
 ### 5.6 Cài đặt `/settings`
 - Tên hiển thị, bật/tắt thông báo đẩy trên thiết bị này, đăng xuất
@@ -177,7 +179,7 @@ Enum và hàm thuần ở BE: `RepeatType`, `TaskType`; lớp `ScheduleCalculato
 - Ứng dụng là PWA: `manifest` + service worker, cài được lên Màn hình chính
 - BE tạo cặp khoá VAPID đọc từ biến môi trường (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`); FE lấy public key qua `GET /api/push/public-key`
 - Người dùng bấm "Bật thông báo" thì FE xin quyền, đăng ký `PushManager.subscribe`, gửi subscription lên `POST /api/push/subscribe`; tắt thì `DELETE /api/push/subscribe`
-- Scheduler của BE chạy mỗi phút: tìm lịch `enabled` có `next_due_at <= now` chưa có thông báo cho lần đó, tạo `notifications`, rồi gửi push tới mọi subscription của người dùng. Push lỗi `404/410` thì xoá subscription
+- Scheduler của BE chạy mỗi phút (và một lần lúc khởi động; tắt bằng `app.scheduler.enabled=false`): tìm lịch `enabled` có `next_due_at <= now + 30 phút` chưa có thông báo chưa xử lý, tạo `notifications`, rồi gửi push tới mọi subscription của người dùng. Push lỗi `404/410` thì xoá subscription
 - Service worker nhận `push` và hiện thông báo; bấm vào thì mở `/` (Hôm nay)
 - Hỗ trợ nền tảng:
   - Android (Chrome, Edge, Firefox): nhận push kể cả khi đóng trình duyệt, không bắt buộc cài PWA
@@ -245,7 +247,9 @@ GET    /api/today                  -> { due: [item], upcoming: [item] }
        //        waterChangePercent, fertilizerMl, nextDueAt }
 GET    /api/notifications?limit=50 -> [notification]
 GET    /api/notifications/unread-count -> { count }
-POST   /api/notifications/read-all
+POST   /api/notifications/read-all   -> 204 (chỉ đổi UNREAD thành READ)
+POST   /api/notifications/{id}/read  -> 204 (thông báo của người khác: 404)
+       // notification { id, taskId, message, status: "UNREAD"|"READ"|"RESOLVED", dueAt, createdAt }; limit mặc định 50, tối đa 100
 
 GET    /api/push/public-key        -> { publicKey }
 POST   /api/push/subscribe         { endpoint, keys: { p256dh, auth } }
@@ -276,7 +280,7 @@ Mã trạng thái: 400 (validation), 401 (chưa đăng nhập/token sai), 404 (k
 7. Hoãn không làm đổi `repeatType`/`timeOfDay`
 
 Service/controller:
-8. Scheduler chạy hai lần liên tiếp chỉ tạo một thông báo cho mỗi (task, dueAt)
+8. Thông báo tạo đúng 30 phút trước giờ hẹn (còn 30 phút thì tạo, 30 phút 1 giây thì chưa); scheduler chạy hai lần liên tiếp chỉ tạo một thông báo cho mỗi (task, dueAt)
 9. Lịch bị tắt không sinh thông báo
 10. Hoàn thành/hoãn chuyển thông báo sang `RESOLVED`
 11. User A gọi id tank/task/notification của user B nhận 404
@@ -328,10 +332,10 @@ Trạng thái: `[x]` xong, `[ ]` chưa làm.
 - Phạm vi FE: trang `/` (Hôm nay) với nhóm "Đến giờ / Quá hạn" và "Sắp tới hôm nay", nút "Hoàn thành" và "Hoãn đến mai", mục "Lịch sử chăm" trong chi tiết bể và "Lịch sử" trong "Việc chung", slices `today` và `logs`
 - Tiêu chí hoàn thành: bấm Hoàn thành thì `nextDueAt` chuyển sang lần kế tiếp đúng quy tắc, bấm Hoãn thì lùi đúng 1 ngày giữ giờ, mỗi hành động có một dòng nhật ký; việc `ONCE` hoàn thành thì tự tắt
 
-### [ ] M7. Thông báo trong app
-- Phạm vi BE: scheduler `@Scheduled` mỗi phút tạo `notifications` cho lịch đến hạn (không trùng theo `task_id` + `due_at`, lịch tắt không sinh), `GET /api/notifications`, `unread-count`, `read-all`; hoàn thành/hoãn chuyển thông báo sang `RESOLVED`
+### [x] M7. Thông báo trong app
+- Phạm vi BE: scheduler `@Scheduled` mỗi phút tạo `notifications` **trước 30 phút** khi gần tới giờ hẹn (không trùng theo `task_id` + `due_at`, lịch tắt không sinh), `GET /api/notifications`, `unread-count`, `read-all`, `{id}/read`; hoàn thành/hoãn chuyển thông báo sang `RESOLVED`
 - Phạm vi FE: trang `/notifications`, chuông/chấm số chưa đọc ở thanh điều hướng, polling 60 giây khi tab mở, slice `notifications`
-- Tiêu chí hoàn thành: tạo lịch đến hạn sau 1 phút thì đúng 1 thông báo xuất hiện trong app; hoãn thì ngày mai thông báo mới xuất hiện lúc cùng giờ; test mục 10 số 8 đến 10 pass
+- Tiêu chí hoàn thành: tạo lịch hẹn sau 31 phút thì sau 1 đến 2 phút có đúng 1 thông báo trong app (trước giờ hẹn 30 phút); hoãn thì thông báo mới xuất hiện 30 phút trước giờ hẹn mới (ngày mai); test mục 10 số 8 đến 10 pass
 
 ### [ ] M8. PWA và Web Push
 - Phạm vi BE: sinh/đọc khoá VAPID từ biến môi trường, `GET /api/push/public-key`, `POST/DELETE /api/push/subscribe`, gửi push khi tạo thông báo, xoá subscription khi push trả 404/410
@@ -359,6 +363,7 @@ Trạng thái: `[x]` xong, `[ ]` chưa làm.
 - **Dữ liệu cá:** nhập tay (tên loài + số lượng + còn sống/đã chết), chưa có thư viện loài
 - **Bể:** cho phép trùng tên bể, không giới hạn số bể mỗi người dùng; bể mới tạo và cá mới thêm hiển thị lên trước
 - **Không có "loại bể"** (bỏ để giao diện đỡ rối). Kích thước bể nhập theo thể tích hoặc theo dài, rộng, cao; thể tích có 1 chữ số thập phân và do server tính khi có kích thước
+- **Thông báo trong app:** tạo trước 30 phút khi gần tới giờ hẹn (hằng số), một thông báo cho mỗi lần hẹn; thành đã xử lý khi hoàn thành, hoãn, tắt/bật lại hoặc sửa thời gian của lịch; chấm số chưa đọc cập nhật bằng polling 60 giây khi tab hiển thị
 - **Hoàn thành/hoãn:** chỉ lịch đang bật (tắt thì 409), được làm cả khi chưa đến giờ (hoàn thành sớm tính từ ngày hẹn, hoãn cộng 1 ngày giữ giờ); nhật ký là ảnh chụp lúc ghi và có chủ riêng; trang Hôm nay chia "Đến giờ / Quá hạn" và "Sắp tới hôm nay" (đến 00:00 ngày mai)
 - **Lịch không gắn bể:** lịch chăm có thể không thuộc bể nào ("Việc chung", ví dụ thay nước cho trùn chỉ); lịch có chủ riêng (`user_id`) và đổi bể gắn kèm được
 - **Ô ngày:** luôn gõ và hiển thị `dd/MM/yyyy` (không theo ngôn ngữ trình duyệt)

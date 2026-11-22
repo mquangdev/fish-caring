@@ -1,4 +1,4 @@
-import type { CareResult, FishStatus, RepeatType, TaskType } from '@/types/api'
+import type { CareResult, FishStatus, NotificationStatus, RepeatType, TaskType } from '@/types/api'
 
 /** Vietnamese labels for enum values coming from the API. */
 
@@ -10,6 +10,12 @@ export const FISH_STATUS_LABELS: Record<FishStatus, string> = {
 export const CARE_RESULT_LABELS: Record<CareResult, string> = {
   DONE: 'Hoàn thành',
   SNOOZED: 'Hoãn đến mai',
+}
+
+export const NOTIFICATION_STATUS_LABELS: Record<NotificationStatus, string> = {
+  UNREAD: 'Chưa đọc',
+  READ: 'Đã đọc',
+  RESOLVED: 'Đã xử lý',
 }
 
 export const TASK_TYPE_LABELS: Record<TaskType, string> = {

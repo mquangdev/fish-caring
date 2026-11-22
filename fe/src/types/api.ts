@@ -162,3 +162,15 @@ export interface Today {
   due: TodayItem[]
   upcoming: TodayItem[]
 }
+
+export type NotificationStatus = 'UNREAD' | 'READ' | 'RESOLVED'
+
+/** An in-app notification. `dueAt` is the due time of the task it is about. */
+export interface AppNotification {
+  id: number
+  taskId: number
+  message: string
+  status: NotificationStatus
+  dueAt: string
+  createdAt: string
+}

@@ -6,6 +6,7 @@ import { MemoryRouter, type InitialEntry } from 'react-router-dom'
 import authReducer, { type AuthState } from '@/store/authSlice'
 import tanksReducer, { type TanksState } from '@/store/tanksSlice'
 import logsReducer from '@/store/logsSlice'
+import notificationsReducer from '@/store/notificationsSlice'
 import tasksReducer from '@/store/tasksSlice'
 import todayReducer from '@/store/todaySlice'
 import type { User } from '@/types/api'
@@ -47,7 +48,7 @@ export const EMPTY_TANKS: TanksState = {
 
 export function makeStore(auth: AuthState = LOGGED_OUT, tanks: TanksState = EMPTY_TANKS) {
   return configureStore({
-    reducer: { auth: authReducer, tanks: tanksReducer, tasks: tasksReducer, today: todayReducer, logs: logsReducer },
+    reducer: { auth: authReducer, tanks: tanksReducer, tasks: tasksReducer, today: todayReducer, logs: logsReducer, notifications: notificationsReducer },
     preloadedState: { auth, tanks },
   })
 }

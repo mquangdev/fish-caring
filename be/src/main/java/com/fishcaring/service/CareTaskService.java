@@ -12,6 +12,7 @@ import com.fishcaring.mapper.TaskMapper;
 import com.fishcaring.object.CareTaskData;
 import com.fishcaring.repository.CareLogRepository;
 import com.fishcaring.repository.CareTaskRepository;
+import com.fishcaring.repository.NotificationRepository;
 import com.fishcaring.repository.TankRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -38,14 +39,16 @@ public class CareTaskService {
     private final TankRepository tanks;
     private final CareTaskRepository tasks;
     private final CareLogRepository logs;
+    private final NotificationRepository notifications;
     private final TaskMapper mapper;
     private final Clock clock;
 
     public CareTaskService(TankRepository tanks, CareTaskRepository tasks, CareLogRepository logs,
-                           TaskMapper mapper, Clock clock) {
+                           NotificationRepository notifications, TaskMapper mapper, Clock clock) {
         this.tanks = tanks;
         this.tasks = tasks;
         this.logs = logs;
+        this.notifications = notifications;
         this.mapper = mapper;
         this.clock = clock;
     }
@@ -86,6 +89,10 @@ public class CareTaskService {
             due = firstDue(request, now);
         }
         tasks.update(taskId, userId, mapper.toData(request, existing.getEnabled(), due), now);
+        if (timingChanged) {
+            // the old notification is about the old due time and would block the one for the new time
+            notifications.resolveOpenByTaskId(taskId, now);
+        }
         return mapper.toResponse(load(userId, taskId));
     }
 
@@ -103,6 +110,7 @@ public class CareTaskService {
                     existing.getIntervalDays(), existing.getStartDate(), now);
         }
         tasks.setEnabled(taskId, userId, enabled, due, now);
+        notifications.resolveOpenByTaskId(taskId, now);
         return mapper.toResponse(load(userId, taskId));
     }
 
@@ -118,6 +126,7 @@ public class CareTaskService {
                 task.getTimeOfDay(), task.getIntervalDays(), task.getNextDueAt(), now);
         logs.insert(userId, task.getTankId(), taskId, task.getTitle(), CareResult.DONE, task.getNextDueAt(), now);
         tasks.setEnabled(taskId, userId, next.isPresent(), next.orElse(null), now);
+        notifications.resolveOpenByTaskId(taskId, now);
         return mapper.toResponse(load(userId, taskId));
     }
 
@@ -129,6 +138,7 @@ public class CareTaskService {
         LocalDateTime next = ScheduleCalculator.snooze(task.getNextDueAt(), task.getTimeOfDay(), now);
         logs.insert(userId, task.getTankId(), taskId, task.getTitle(), CareResult.SNOOZED, task.getNextDueAt(), now);
         tasks.setEnabled(taskId, userId, true, next, now);
+        notifications.resolveOpenByTaskId(taskId, now);
         return mapper.toResponse(load(userId, taskId));
     }
 

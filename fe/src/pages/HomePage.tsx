@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { formatDateTime } from '@/lib/format'
 import { GENERIC_ERROR } from '@/lib/messages'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import { fetchUnreadCount } from '@/store/notificationsSlice'
 import { completeTask, fetchToday, snoozeTask } from '@/store/todaySlice'
 import type { TodayItem } from '@/types/api'
 
@@ -29,6 +30,8 @@ export default function HomePage() {
       toast.error(result.payload?.message ?? GENERIC_ERROR)
     }
     void dispatch(fetchToday())
+    // the notification of this task is now resolved
+    void dispatch(fetchUnreadCount())
   }
 
   async function handleSnooze(item: TodayItem) {
@@ -39,6 +42,8 @@ export default function HomePage() {
       toast.error(result.payload?.message ?? GENERIC_ERROR)
     }
     void dispatch(fetchToday())
+    // the notification of this task is now resolved
+    void dispatch(fetchUnreadCount())
   }
 
   const loading = status === 'idle' || (status === 'loading' && due.length === 0 && upcoming.length === 0)
