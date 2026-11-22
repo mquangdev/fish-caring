@@ -10,6 +10,7 @@ import RegisterPage from '@/pages/RegisterPage'
 import SettingsPage from '@/pages/SettingsPage'
 import TankDetailPage from '@/pages/TankDetailPage'
 import TankFormPage from '@/pages/TankFormPage'
+import TaskFormPage from '@/pages/TaskFormPage'
 import TanksPage from '@/pages/TanksPage'
 
 export default function App() {
@@ -25,6 +26,9 @@ export default function App() {
             <Route path="/tanks/new" element={<TankFormPage />} />
             <Route path="/tanks/:id" element={<TankDetailPage />} />
             <Route path="/tanks/:id/edit" element={<TankFormPage />} />
+            <Route path="/tanks/:id/tasks/new" element={<TaskFormPage />} />
+            <Route path="/tasks/new" element={<TaskFormPage />} />
+            <Route path="/tasks/:taskId/edit" element={<TaskFormPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>

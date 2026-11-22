@@ -28,6 +28,17 @@ const BY_FIELD: Record<string, string> = {
   heightCm: 'Chiều cao từ 0,1 đến 1.000 cm.',
   note: 'Ghi chú tối đa 1.000 ký tự.',
   fish: 'Mỗi bể tối đa 50 dòng cá.',
+  title: 'Tiêu đề cần từ 1 đến 100 ký tự.',
+  type: 'Vui lòng chọn loại việc.',
+  repeatType: 'Vui lòng chọn kiểu lặp.',
+  timeOfDay: 'Giờ nhắc không hợp lệ.',
+  intervalDays: 'Số ngày từ 2 đến 60.',
+  setupDate: 'Ngày setup chưa hợp lệ.',
+  tankId: 'Không tìm thấy bể đã chọn.',
+  startDate: 'Vui lòng chọn ngày hợp lệ (lịch một lần phải ở tương lai).',
+  foodName: 'Loại thức ăn tối đa 100 ký tự.',
+  waterChangePercent: 'Phần trăm nước từ 1 đến 100.',
+  fertilizerMl: 'Lượng phân từ 0,1 đến 1.000 ml.',
 }
 
 /** Friendly message for any error. `overrides` lets a screen word a code in its own context. */

@@ -57,6 +57,47 @@ export interface Tank {
   createdAt: string
   updatedAt: string
   fish: Fish[]
+  /** Care tasks: enabled first by nearest due time, disabled last. */
+  tasks: CareTask[]
+}
+
+export type TaskType = 'FEED' | 'WATER_CHANGE' | 'FERTILIZE' | 'OTHER'
+export type RepeatType = 'DAILY' | 'EVERY_N_DAYS' | 'ONCE'
+
+/** A care task. `timeOfDay` is "HH:mm"; `nextDueAt` is null while the task is disabled. */
+export interface CareTask {
+  id: number
+  /** The tank the task belongs to; null for a general task ("Việc chung"). */
+  tankId: number | null
+  type: TaskType
+  title: string
+  note: string | null
+  repeatType: RepeatType
+  intervalDays: number | null
+  timeOfDay: string
+  startDate: string | null
+  foodName: string | null
+  waterChangePercent: number | null
+  fertilizerMl: number | null
+  enabled: boolean
+  nextDueAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+/** Body of create and update. Send only the detail field of the chosen type. */
+export interface TaskPayload {
+  tankId: number | null
+  type: TaskType
+  title: string
+  note: string | null
+  repeatType: RepeatType
+  intervalDays: number | null
+  timeOfDay: string
+  startDate: string | null
+  foodName: string | null
+  waterChangePercent: number | null
+  fertilizerMl: number | null
 }
 
 export interface FishPayload {

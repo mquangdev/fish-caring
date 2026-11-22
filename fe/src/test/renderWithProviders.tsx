@@ -5,6 +5,7 @@ import { Provider } from 'react-redux'
 import { MemoryRouter, type InitialEntry } from 'react-router-dom'
 import authReducer, { type AuthState } from '@/store/authSlice'
 import tanksReducer, { type TanksState } from '@/store/tanksSlice'
+import tasksReducer from '@/store/tasksSlice'
 import type { User } from '@/types/api'
 
 export const TEST_USER: User = { id: 1, email: 'alice@example.com', displayName: 'Alice' }
@@ -43,7 +44,10 @@ export const EMPTY_TANKS: TanksState = {
 }
 
 export function makeStore(auth: AuthState = LOGGED_OUT, tanks: TanksState = EMPTY_TANKS) {
-  return configureStore({ reducer: { auth: authReducer, tanks: tanksReducer }, preloadedState: { auth, tanks } })
+  return configureStore({
+    reducer: { auth: authReducer, tanks: tanksReducer, tasks: tasksReducer },
+    preloadedState: { auth, tanks },
+  })
 }
 
 interface Options {

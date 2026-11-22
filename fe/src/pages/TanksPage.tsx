@@ -2,6 +2,7 @@ import { Fish, Plus } from 'lucide-react'
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { EmptyState } from '@/components/EmptyState'
+import { GeneralTasksSection } from '@/components/GeneralTasksSection'
 import { TankCard } from '@/components/TankCard'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -55,6 +56,8 @@ export default function TanksPage() {
           ))}
         </ul>
       )}
+
+      <GeneralTasksSection />
 
       {items.length > 0 ? (
         <div className="pointer-events-none fixed inset-x-0 bottom-20 z-30 mx-auto flex max-w-md justify-end px-4 md:max-w-2xl">

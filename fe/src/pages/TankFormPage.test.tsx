@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
@@ -31,6 +31,7 @@ const SAVED: Tank = {
   createdAt: '2026-11-21T08:00:00',
   updatedAt: '2026-11-21T08:00:00',
   fish: [],
+  tasks: [],
 }
 
 const EXISTING: Tank = {
@@ -47,6 +48,7 @@ const EXISTING: Tank = {
     { id: 11, speciesName: 'Guppy', quantity: 4, status: 'ALIVE' },
     { id: 10, speciesName: 'Neon', quantity: 10, status: 'DEAD' },
   ],
+  tasks: [],
 }
 
 describe('TankFormPage (create)', () => {
@@ -314,12 +316,42 @@ describe('TankFormPage (edit)', () => {
     expect(screen.getByRole('radio', { name: 'Nhập thể tích' })).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByLabelText('Thể tích (lít)')).toHaveValue('90')
     expect(screen.queryByText('Loại bể')).not.toBeInTheDocument()
-    expect(screen.getByLabelText('Ngày setup')).toHaveValue('2026-01-15')
+    expect(screen.getByLabelText('Ngày setup')).toHaveValue('15/01/2026')
     expect(screen.getByLabelText('Ghi chú')).toHaveValue('ghi chú cũ')
     const rows = screen.getAllByTestId('fish-row')
     expect(within(rows[0]).getByLabelText('Loài')).toHaveValue('Guppy')
     expect(within(rows[1]).getByLabelText('Loài')).toHaveValue('Neon')
     expect(within(rows[1]).getByRole('radio', { name: 'Đã chết' })).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('takes the setup date as dd/MM/yyyy and sends it as an ISO date', async () => {
+    const api = mockApi({
+      'GET /tanks/7': { status: 200, data: EXISTING },
+      'PUT /tanks/7': { status: 200, data: EXISTING },
+    })
+    renderForm('/tanks/7/edit')
+    const date = await screen.findByLabelText('Ngày setup')
+    await userEvent.clear(date)
+    await userEvent.type(date, '05022026')
+
+    expect(date).toHaveValue('05/02/2026')
+    await userEvent.click(screen.getByRole('button', { name: 'Lưu' }))
+
+    await waitFor(() => expect(api.calls.some((c) => c.method === 'put')).toBe(true))
+    expect(JSON.parse(api.calls.find((c) => c.method === 'put')!.data as string).setupDate).toBe('2026-02-05')
+  })
+
+  it('rejects a setup date that is not a real date and does not call the API', async () => {
+    const api = mockApi({ 'GET /tanks/7': { status: 200, data: EXISTING } })
+    renderForm('/tanks/7/edit')
+    const date = await screen.findByLabelText('Ngày setup')
+    await userEvent.clear(date)
+    await userEvent.type(date, '31042026')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Lưu' }))
+
+    expect(screen.getByText('Ngày chưa hợp lệ. Nhập theo dd/MM/yyyy.')).toBeInTheDocument()
+    expect(api.calls.some((c) => c.method === 'put')).toBe(false)
   })
 
   it('opens in "enter dimensions" mode when the tank has dimensions', async () => {

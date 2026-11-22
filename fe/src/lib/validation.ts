@@ -1,5 +1,6 @@
 /** Client-side form checks. They mirror the backend rules and return Vietnamese messages (null = valid). */
 
+import { isIsoDate } from './dateInput'
 import {
   calculateVolumeLiters,
   MAX_DIMENSION_CM,
@@ -8,6 +9,8 @@ import {
   MIN_VOLUME_LITERS,
   parseDecimal,
 } from './volume'
+
+const DATE_FORMAT_ERROR = 'Ngày chưa hợp lệ. Nhập theo dd/MM/yyyy.'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -93,6 +96,77 @@ export function validateDimensions(length: string, width: string, height: string
 
 export function validateNote(value: string): string | null {
   return value.length > 1000 ? 'Ghi chú tối đa 1.000 ký tự.' : null
+}
+
+export function validateTaskTitle(value: string): string | null {
+  const title = value.trim()
+  if (!title) return 'Vui lòng nhập tiêu đề.'
+  if (title.length > 100) return 'Tiêu đề tối đa 100 ký tự.'
+  return null
+}
+
+export function validateTaskNote(value: string): string | null {
+  return value.length > 500 ? 'Ghi chú tối đa 500 ký tự.' : null
+}
+
+export function validateFoodName(value: string): string | null {
+  return value.trim().length > 100 ? 'Loại thức ăn tối đa 100 ký tự.' : null
+}
+
+/** Optional; when given a whole number from 1 to 100. */
+export function validateWaterChangePercent(value: string): string | null {
+  const text = value.trim()
+  if (!text) return null
+  if (!/^\d+$/.test(text)) return 'Chỉ nhập số nguyên từ 1 đến 100.'
+  const percent = Number(text)
+  return percent < 1 || percent > 100 ? 'Phần trăm nước từ 1 đến 100.' : null
+}
+
+/** Optional; when given from 0,1 to 1.000 ml with at most one decimal. */
+export function validateFertilizerMl(value: string): string | null {
+  const text = value.trim()
+  if (!text) return null
+  const ml = parseDecimal(text)
+  if (ml === null) return 'Chỉ nhập số, tối đa 1 chữ số thập phân.'
+  return ml < 0.1 || ml > 1000 ? 'Lượng phân từ 0,1 đến 1.000 ml.' : null
+}
+
+/** "Mỗi N ngày": N is a whole number from 2 to 60. */
+export function validateInterval(value: string): string | null {
+  const text = value.trim()
+  if (!/^\d+$/.test(text)) return 'Số ngày cần là số nguyên từ 2 đến 60.'
+  const days = Number(text)
+  return days < 2 || days > 60 ? 'Số ngày từ 2 đến 60.' : null
+}
+
+export function validateTime(value: string): string | null {
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(value) ? null : 'Vui lòng chọn giờ nhắc.'
+}
+
+/**
+ * The date of an "every N days" or one-off task. A one-off task must be in the future, so it needs
+ * the time and the current Vietnam date time ("yyyy-MM-ddTHH:mm:ss") to compare.
+ */
+export function validateTaskDate(
+  value: string,
+  repeatType: 'EVERY_N_DAYS' | 'ONCE',
+  timeOfDay: string,
+  now: string,
+): string | null {
+  if (!value.trim()) {
+    return repeatType === 'ONCE' ? 'Vui lòng chọn ngày.' : 'Vui lòng chọn ngày bắt đầu.'
+  }
+  if (!isIsoDate(value)) return DATE_FORMAT_ERROR
+  if (repeatType === 'ONCE' && `${value}T${timeOfDay}:00` <= now) {
+    return 'Hãy chọn thời điểm trong tương lai.'
+  }
+  return null
+}
+
+/** The setup date is optional; when something is typed it must be a real dd/MM/yyyy date. */
+export function validateSetupDate(value: string): string | null {
+  if (!value.trim()) return null
+  return isIsoDate(value) ? null : DATE_FORMAT_ERROR
 }
 
 export interface FishRowErrors {

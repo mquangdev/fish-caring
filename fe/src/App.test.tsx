@@ -67,6 +67,27 @@ describe('App routes', () => {
     expect(await screen.findByLabelText('Tên bể')).toHaveValue('Bể 7')
   })
 
+  it('opens the add task form before treating "tasks" as an id', async () => {
+    mockApi({ 'GET /tanks': { status: 200, data: [{ id: 7, name: 'Bể 7', volumeLiters: null, taskCount: 0, nextDueAt: null }] } })
+    renderWithProviders(<App />, { route: '/tanks/7/tasks/new', auth: LOGGED_IN })
+
+    expect(await screen.findByRole('heading', { name: 'Thêm lịch chăm' })).toBeInTheDocument()
+  })
+
+  it('opens the add general task form', async () => {
+    mockApi({ 'GET /tanks': { status: 200, data: [] } })
+    renderWithProviders(<App />, { route: '/tasks/new', auth: LOGGED_IN })
+
+    expect(await screen.findByLabelText('Gắn với')).toHaveValue('')
+    expect(screen.getByRole('heading', { name: 'Thêm lịch chăm' })).toBeInTheDocument()
+  })
+
+  it('sends a visitor from a task page to the login page', () => {
+    renderWithProviders(<App />, { route: '/tasks/3/edit', auth: LOGGED_OUT })
+
+    expect(screen.getByRole('heading', { name: 'Đăng nhập' })).toBeInTheDocument()
+  })
+
   it('shows the register page to visitors', () => {
     renderWithProviders(<App />, { route: '/register', auth: LOGGED_OUT })
 

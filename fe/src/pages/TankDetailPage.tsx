@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { EmptyState } from '@/components/EmptyState'
+import { TaskList } from '@/components/TaskList'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -140,6 +141,29 @@ export default function TankDetailPage() {
           </dl>
         </CardContent>
       </Card>
+
+      <section aria-labelledby="tasks-heading" className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 id="tasks-heading" className="text-lg font-semibold">
+            Lịch chăm
+          </h2>
+          {tank.tasks.length > 0 ? (
+            <Button asChild variant="outline" size="sm">
+              <Link to={`/tanks/${tank.id}/tasks/new`}>Thêm lịch chăm</Link>
+            </Button>
+          ) : null}
+        </div>
+        {tank.tasks.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed px-4 py-6 text-center">
+            <p className="text-sm text-muted-foreground">Chưa có lịch chăm</p>
+            <Button asChild variant="outline">
+              <Link to={`/tanks/${tank.id}/tasks/new`}>Thêm lịch chăm</Link>
+            </Button>
+          </div>
+        ) : (
+          <TaskList tasks={tank.tasks} onChanged={() => void dispatch(fetchTank(tank.id))} />
+        )}
+      </section>
 
       <section aria-labelledby="fish-heading" className="flex flex-col gap-3">
         <h2 id="fish-heading" className="text-lg font-semibold">

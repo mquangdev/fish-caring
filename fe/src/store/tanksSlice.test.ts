@@ -32,6 +32,7 @@ const TANK: Tank = {
   createdAt: '2026-11-21T08:00:00',
   updatedAt: '2026-11-21T08:00:00',
   fish: [{ id: 5, speciesName: 'Neon', quantity: 10, status: 'ALIVE' }],
+  tasks: [],
 }
 
 const PAYLOAD: TankPayload = {

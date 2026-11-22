@@ -2,6 +2,7 @@ import { ArrowLeft, Fish } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
+import { DateField } from '@/components/DateField'
 import { EmptyState } from '@/components/EmptyState'
 import { FishListEditor } from '@/components/FishListEditor'
 import { FormField } from '@/components/FormField'
@@ -17,6 +18,7 @@ import {
   validateDimensions,
   validateFishRow,
   validateNote,
+  validateSetupDate,
   validateTankName,
   validateVolume,
   type DimensionErrors,
@@ -39,6 +41,7 @@ interface FormErrors {
   volume?: string | null
   dimensions?: DimensionErrors
   note?: string | null
+  setupDate?: string | null
   rows: Record<string, FishRowErrors>
 }
 
@@ -119,11 +122,12 @@ export default function TankFormPage() {
       volume: sizeMode === 'volume' ? validateVolume(volume) : null,
       dimensions,
       note: validateNote(note),
+      setupDate: validateSetupDate(setupDate),
       rows: rowErrors,
     }
     setErrors(next)
     const dimensionProblem = dimensions && (dimensions.length || dimensions.width || dimensions.height || dimensions.volume)
-    if (next.name || next.volume || dimensionProblem || next.note || Object.keys(rowErrors).length > 0) return
+    if (next.name || next.volume || dimensionProblem || next.note || next.setupDate || Object.keys(rowErrors).length > 0) return
 
     // Only the chosen way of entering the size is sent; the server calculates the volume from the dimensions.
     const byDimensions = sizeMode === 'dimensions' && length.trim() !== ''
@@ -289,13 +293,13 @@ export default function TankFormPage() {
           )}
         </fieldset>
 
-        <FormField
+        <DateField
           id="setupDate"
           label="Ngày setup"
-          type="date"
           hint="Không bắt buộc."
           value={setupDate}
-          onChange={(e) => setSetupDate(e.target.value)}
+          onChange={setSetupDate}
+          error={errors.setupDate ?? saveFieldErrors.setupDate ?? null}
         />
 
         <div className="flex flex-col gap-2">
