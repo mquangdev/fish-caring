@@ -24,4 +24,18 @@ describe('messages', () => {
       other: 'Giá trị chưa hợp lệ.',
     })
   })
+
+  it('maps tank fields and fish row errors', () => {
+    expect(
+      fieldMessages({
+        name: 'must not be blank',
+        volumeLiters: 'must be greater than or equal to 1',
+        'fish[0].quantity': 'must be greater than or equal to 1',
+      }),
+    ).toEqual({
+      name: 'Tên bể cần từ 1 đến 100 ký tự.',
+      volumeLiters: 'Thể tích từ 0,1 đến 10.000 lít.',
+      'fish[0].quantity': 'Thông tin cá chưa hợp lệ.',
+    })
+  })
 })

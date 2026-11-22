@@ -1,11 +1,13 @@
 import { configureStore } from '@reduxjs/toolkit'
 import { setTokenProvider, setUnauthorizedHandler } from '@/api/axiosClient'
 import authReducer, { signOut } from './authSlice'
+import tanksReducer from './tanksSlice'
 
 // Feature slices (auth, tanks, tasks, notifications) are registered here as they are added.
 export const store = configureStore({
   reducer: {
     auth: authReducer,
+    tanks: tanksReducer,
   },
 })
 

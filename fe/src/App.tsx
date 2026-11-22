@@ -8,6 +8,8 @@ import NotFoundPage from '@/pages/NotFoundPage'
 import NotificationsPage from '@/pages/NotificationsPage'
 import RegisterPage from '@/pages/RegisterPage'
 import SettingsPage from '@/pages/SettingsPage'
+import TankDetailPage from '@/pages/TankDetailPage'
+import TankFormPage from '@/pages/TankFormPage'
 import TanksPage from '@/pages/TanksPage'
 
 export default function App() {
@@ -20,6 +22,9 @@ export default function App() {
           <Route element={<AppLayout />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/tanks" element={<TanksPage />} />
+            <Route path="/tanks/new" element={<TankFormPage />} />
+            <Route path="/tanks/:id" element={<TankDetailPage />} />
+            <Route path="/tanks/:id/edit" element={<TankFormPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>

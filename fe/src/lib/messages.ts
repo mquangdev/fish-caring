@@ -15,10 +15,19 @@ const BY_CODE: Record<string, string> = {
 
 export const GENERIC_ERROR = 'Đã có lỗi xảy ra. Vui lòng thử lại.'
 
+const FISH_ROW_ERROR = 'Thông tin cá chưa hợp lệ.'
+
 const BY_FIELD: Record<string, string> = {
   email: 'Email không hợp lệ.',
   password: 'Mật khẩu cần từ 8 đến 72 ký tự.',
   displayName: 'Tên hiển thị cần từ 1 đến 100 ký tự.',
+  name: 'Tên bể cần từ 1 đến 100 ký tự.',
+  volumeLiters: 'Thể tích từ 0,1 đến 10.000 lít.',
+  lengthCm: 'Chiều dài từ 0,1 đến 1.000 cm.',
+  widthCm: 'Chiều rộng từ 0,1 đến 1.000 cm.',
+  heightCm: 'Chiều cao từ 0,1 đến 1.000 cm.',
+  note: 'Ghi chú tối đa 1.000 ký tự.',
+  fish: 'Mỗi bể tối đa 50 dòng cá.',
 }
 
 /** Friendly message for any error. `overrides` lets a screen word a code in its own context. */
@@ -33,7 +42,9 @@ export function errorMessage(error: unknown, overrides: Record<string, string> =
 export function fieldMessages(fieldErrors: Record<string, string>): Record<string, string> {
   const result: Record<string, string> = {}
   for (const field of Object.keys(fieldErrors)) {
-    result[field] = BY_FIELD[field] ?? 'Giá trị chưa hợp lệ.'
+    // errors on a fish row come as "fish[0].quantity"; the form shows one message per row
+    const fallback = field.startsWith('fish[') ? FISH_ROW_ERROR : 'Giá trị chưa hợp lệ.'
+    result[field] = BY_FIELD[field] ?? fallback
   }
   return result
 }
