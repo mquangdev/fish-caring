@@ -38,7 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
-class AuthControllerIT {
+class AuthControllerTest {
 
     @Autowired
     private MockMvc mvc;

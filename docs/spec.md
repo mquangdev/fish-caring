@@ -2,7 +2,7 @@
 
 ## 1. Mục tiêu
 
-Người chơi thủy sinh thường có nhiều bể, mỗi bể nuôi loài khác nhau và có chế độ chăm khác nhau (cho ăn, thay nước, bón phân...). Rất khó nhớ hôm nay bể nào cần làm gì. Web app này cho người dùng khai báo bể, đặt lịch chăm cho từng bể, nhắc đúng giờ trên điện thoại, và ghi nhận đã làm hay hoãn sang ngày mai.
+Người chơi thủy sinh thường có nhiều bể, mỗi bể nuôi loài khác nhau và có chế độ chăm khác nhau (cho ăn, thay nước, bón phân...). Rất khó nhớ hôm nay bể nào cần làm gì. Web app này cho người dùng khai báo bể, đặt lịch chăm cho từng bể (hoặc lịch chung không gắn bể nào, ví dụ thay nước cho trùn chỉ), nhắc đúng giờ trên điện thoại, và ghi nhận đã làm hay hoãn sang ngày mai.
 
 Thước đo thành công của MVP:
 - Đăng ký, tạo bể đầu tiên và đặt được một lịch chăm trong dưới 2 phút
@@ -32,12 +32,18 @@ Người nuôi cá, chơi thủy sinh tại nhà, dùng điện thoại là chí
 
 ### 4.1 Loại việc và kiểu lặp
 
-Loại việc (`type`): `FEED` (cho ăn), `WATER_CHANGE` (thay nước), `FERTILIZE` (bón phân), `OTHER` (việc khác, dùng tiêu đề tự đặt).
+Loại việc (`type`): `FEED` (cho ăn), `WATER_CHANGE` (thay nước), `FERTILIZE` (bón phân), `OTHER` (việc khác, dùng tiêu đề tự đặt). Mỗi loại có thêm **một ô nhập riêng, không bắt buộc**:
+- `FEED`: `foodName` (loại thức ăn, chữ, tối đa 100 ký tự), ví dụ "Hạt 1mm"
+- `WATER_CHANGE`: `waterChangePercent` (thay bao nhiêu % nước bể, số nguyên 1 đến 100)
+- `FERTILIZE`: `fertilizerMl` (bao nhiêu ml phân nước, từ 0,1 đến 1.000, tối đa 1 chữ số thập phân)
+- `OTHER`: không có ô riêng
+
+Server chỉ lưu ô riêng khớp với `type`; ô của loại khác bị bỏ qua (lưu `null`), nên đổi loại việc thì giá trị ô của loại cũ bị xoá.
 
 Kiểu lặp (`repeatType`):
-- `DAILY`: mỗi ngày vào `timeOfDay` (HH:mm)
-- `EVERY_N_DAYS`: mỗi `intervalDays` ngày (2 đến 60) vào `timeOfDay`. Ngày bắt đầu do người dùng chọn khi tạo
-- `ONCE`: một lần vào ngày giờ cụ thể; sau khi hoàn thành thì tự tắt
+- `DAILY`: mỗi ngày vào `timeOfDay` (HH:mm); không dùng `intervalDays` và `startDate` (lưu `null`)
+- `EVERY_N_DAYS`: mỗi `intervalDays` ngày (2 đến 60) vào `timeOfDay`. `startDate` bắt buộc, có thể ở quá khứ
+- `ONCE`: một lần vào `startDate` lúc `timeOfDay`, **phải ở tương lai** khi tạo hoặc khi đổi ngày giờ (quá khứ trả `400` ở khoá `startDate`); sau khi hoàn thành thì tự tắt
 
 Ví dụ: "Cho ăn 8:00 mỗi ngày", "Thay 30% nước 19:00 mỗi 7 ngày", "Bón phân nền 20:00 mỗi 3 ngày", "Bón thử thuốc 25/11 21:00 một lần".
 
@@ -45,30 +51,38 @@ Ví dụ: "Cho ăn 8:00 mỗi ngày", "Thay 30% nước 19:00 mỗi 7 ngày", "B
 
 Toàn hệ thống dùng một múi giờ duy nhất là giờ Việt Nam (`Asia/Ho_Chi_Minh`, UTC+7, không có giờ mùa hè). Mọi thời điểm lưu và tính bằng `LocalDateTime` theo giờ này, không có múi giờ riêng theo người dùng.
 
-- Tạo lịch `DAILY`/`EVERY_N_DAYS`: `nextDueAt` là lần đầu tiên `timeOfDay` xảy ra từ `startDate` trở đi mà còn ở tương lai (nếu hôm nay đã qua giờ thì ngày mai).
+- Tạo lịch (hàm `firstDue`; so sánh với `now` là nghiêm ngặt, đúng bằng `now` tính là đã qua):
+  - `DAILY`: hôm nay lúc `timeOfDay` nếu còn sau `now`, không thì ngày mai
+  - `EVERY_N_DAYS`: các mốc là `startDate + k x intervalDays` (k = 0, 1, 2...) lúc `timeOfDay`; lấy mốc đầu tiên sau `now`
+  - `ONCE`: đúng `startDate` lúc `timeOfDay`
 - **Hoàn thành**: lấy `base = max(now, nextDueAt)` rồi lấy ngày của `base` (giờ Việt Nam). `DAILY`: ngày kế tiếp = ngày đó + 1. `EVERY_N_DAYS`: ngày đó + `intervalDays`. Ghép với `timeOfDay`. `ONCE`: tắt lịch (`enabled = false`). Nghĩa là hoàn thành trễ không làm dồn lịch, hoàn thành sớm không bị nhắc lại trong cùng ngày.
 - **Tạm hoãn**: `nextDueAt = nextDueAt + 1 ngày` (cộng đúng 1 ngày lịch, giữ nguyên giờ). Nếu việc đã quá hạn nhiều ngày, hoãn vẫn chỉ cộng 1 ngày từ `nextDueAt` hiện tại; nếu kết quả vẫn ở quá khứ thì dùng cùng giờ của ngày mai tính từ `now`.
 - Tạm hoãn không đổi lịch lặp: lần đến hạn sau của lịch được tính lại từ lúc hoàn thành như trên.
-- Sửa `timeOfDay`, kiểu lặp hoặc ngày bắt đầu thì tính lại `nextDueAt` như khi tạo mới.
-- Tắt lịch (`enabled = false`): không tạo thông báo; bật lại thì tính lại `nextDueAt` như khi tạo mới.
+- Sửa `timeOfDay`, kiểu lặp, số ngày hoặc ngày bắt đầu thì tính lại `nextDueAt` như khi tạo mới. Sửa tiêu đề, ghi chú, loại việc hay các ô riêng **không** tính lại (không làm mất lần đã hoãn).
+- Tắt lịch (`enabled = false`): `nextDueAt = null`, không tạo thông báo; bật lại thì tính lại `nextDueAt` như khi tạo mới. Bật lại lịch `ONCE` đã qua thời điểm trả `400` ở khoá `startDate` (người dùng cần sửa ngày giờ).
 
 ### 4.3 Quy tắc biên
 
 - Mỗi (`taskId`, `dueAt`) chỉ có một thông báo (không tạo trùng khi scheduler chạy lại).
 - Việc quá hạn nhiều ngày không sinh nhiều thông báo; mỗi lịch chỉ có tối đa một thông báo chưa xử lý.
 - Hoàn thành hoặc hoãn một việc thì thông báo tương ứng chuyển sang trạng thái đã xử lý (`resolved`).
-- Xoá bể thì xoá luôn cá, lịch, thông báo và nhật ký chăm của bể đó. Xoá bể cần hộp thoại xác nhận.
+- Xoá bể thì xoá luôn cá, lịch gắn bể đó, thông báo và nhật ký chăm của bể đó. **Lịch không gắn bể ("Việc chung") không bị ảnh hưởng.** Xoá bể cần hộp thoại xác nhận.
+- **Lịch chăm có thể không gắn bể nào** ("Việc chung", ví dụ thay nước cho trùn chỉ): `tankId` là `null`. Lịch luôn thuộc về một người dùng (`user_id`). Sửa lịch được đổi bể gắn kèm (từ bể này sang bể khác, từ bể sang không gắn bể và ngược lại); đổi bể **không** tính lại `nextDueAt`. `tankId` trỏ tới bể của người khác trả `404`.
 - Xoá lịch cần xác nhận; nhật ký đã ghi của lịch đó vẫn giữ theo bể, hiển thị theo tiêu đề đã lưu lúc ghi.
-- Tên bể không rỗng, tối đa 100 ký tự, không trùng (không phân biệt hoa thường) trong cùng một người dùng. Việc kiểm tra làm ở service bằng `LOWER(name)`, không có ràng buộc unique ở DB. Trên MySQL (`utf8mb4_unicode_ci`) phép so sánh cũng không phân biệt dấu, nên "Bể" và "Be" bị coi là trùng.
-- Thể tích bể (lít) là số nguyên dương, có thể để trống.
-- Mỗi bể tối đa 20 lịch chăm, mỗi người dùng tối đa 30 bể (chặn lạm dụng, có thể chỉnh sau).
+- Tên bể không rỗng, tối đa 100 ký tự (được cắt khoảng trắng hai đầu). **Cho phép trùng tên**, kể cả trong cùng một người dùng; không có giới hạn số bể.
+- **Kích thước bể là không bắt buộc** và nhập theo một trong hai cách: (a) nhập **dài, rộng, cao** (cm) để hệ thống tính thể tích, hoặc (b) nhập thẳng **thể tích** (lít). Nhập kích thước thì phải nhập **đủ cả ba cạnh** hoặc không nhập cạnh nào. Mỗi cạnh từ 0,1 đến 1.000 cm; thể tích từ 0,1 đến 10.000 lít; cả hai tối đa 1 chữ số thập phân.
+- Khi có dài, rộng, cao thì **server tính thể tích** = dài x rộng x cao / 1000, làm tròn nửa lên 1 chữ số thập phân (60 x 30 x 36 cm = 64,8 lít) và bỏ qua thể tích client gửi; thể tích tính ra vượt 10.000 lít hoặc dưới 0,1 lít bị từ chối. Frontend dùng cùng công thức để hiện thể tích ngay khi gõ. Kích thước đã nhập được lưu để sửa lại; sửa bể mà không gửi kích thước thì kích thước bị xoá.
+- Bể không có thông tin "loại bể". Ghi chú tối đa 1.000 ký tự. Ngày setup có thể để trống.
+- Cá trong bể: tối đa 50 dòng mỗi bể; mỗi dòng có tên loài (1 đến 100 ký tự), số lượng (số nguyên từ 1 đến 9.999) và trạng thái `ALIVE` (còn sống) hoặc `DEAD` (đã chết). Danh sách cá hiển thị **cá mới lên trước**; danh sách bể hiển thị **bể mới tạo lên trước**.
+- Sửa bể gửi lại toàn bộ danh sách cá và thay thế danh sách cũ (đúng thứ tự đang hiển thị).
+- Không giới hạn số lịch chăm mỗi bể. Lịch có tiêu đề 1 đến 100 ký tự, ghi chú tối đa 500 ký tự. Trong chi tiết bể, lịch xếp: đang bật trước (lần đến hạn gần nhất trước), lịch tắt cuối.
 - Người dùng không bao giờ truy cập được dữ liệu của người khác; truy cập sai id trả 404.
 
 ## 5. Màn hình (mobile-first)
 
 ### 5.0 Routes (FE)
 
-`/login`, `/register`, `/` (Hôm nay), `/tanks` (danh sách bể), `/tanks/new`, `/tanks/:id` (chi tiết bể), `/tanks/:id/edit`, `/tanks/:id/tasks/new`, `/tanks/:id/tasks/:taskId/edit`, `/notifications`, `/settings`. Các route ngoài `/login` và `/register` cần đăng nhập. Có trang 404 tiếng Việt.
+`/login`, `/register`, `/` (Hôm nay), `/tanks` (danh sách bể), `/tanks/new`, `/tanks/:id` (chi tiết bể), `/tanks/:id/edit`, `/tanks/:id/tasks/new` (thêm lịch vào bể), `/tasks/new` (thêm lịch không gắn bể), `/tasks/:taskId/edit` (sửa lịch, kể cả đổi bể), `/notifications`, `/settings`. Các route ngoài `/login` và `/register` cần đăng nhập. Có trang 404 tiếng Việt.
 
 Điều hướng dưới đáy màn hình (mobile): Hôm nay, Bể của tôi, Thông báo (có chấm số chưa đọc), Cài đặt.
 
@@ -86,13 +100,15 @@ Toàn hệ thống dùng một múi giờ duy nhất là giờ Việt Nam (`Asia
 - Banner mời bật thông báo nếu chưa bật (xem mục 7)
 
 ### 5.3 Danh sách bể `/tanks` và chi tiết bể `/tanks/:id`
-- Danh sách: thẻ bể (tên, thể tích, số lịch, việc kế tiếp), nút nổi "Thêm bể"
-- Form bể: tên, thể tích (lít), loại bể (`PLANTED` thủy sinh, `FISH_ONLY` cá cảnh, `OTHER`), ngày setup, ghi chú, danh sách cá (tên loài + số lượng + trạng thái còn sống/đã chết, thêm/xoá nhanh; đàn cá chết một phần thì tách thành hai dòng)
+- Danh sách: thẻ bể (tên, thể tích, số lịch, việc kế tiếp), nút nổi "Thêm bể". Bên dưới có mục **"Việc chung"**: danh sách lịch không gắn bể (cùng thẻ lịch với công tắc bật/tắt, sửa, xoá như ở chi tiết bể), nút phụ "Thêm lịch chung" và trạng thái rỗng "Chưa có việc chung. Ví dụ: thay nước cho trùn chỉ."
+- Form bể: tên; kích thước (không bắt buộc) chọn bằng nút phân đoạn "Nhập thể tích" (một ô lít) hoặc "Nhập kích thước" (ba ô dài, rộng, cao tính bằng cm, hiện thể tích ngay khi gõ); ngày setup; ghi chú; danh sách cá (tên loài + số lượng + trạng thái còn sống/đã chết, thêm/xoá nhanh; đàn cá chết một phần thì tách thành hai dòng)
 - Chi tiết bể: thông tin bể, danh sách lịch chăm (bật/tắt nhanh, sửa, xoá, hiển thị "Mỗi ngày 08:00" / "Mỗi 7 ngày 19:00" / "Một lần 25/11 21:00" và lần đến hạn kế tiếp), nút "Thêm lịch chăm", lịch sử chăm gần đây (50 mục, mới nhất trước)
 
 ### 5.4 Form lịch chăm
-- Loại việc (chọn), tiêu đề (mặc định theo loại, ví dụ "Cho ăn"), ghi chú (ví dụ "Thay 30% nước"), kiểu lặp, giờ nhắc, số ngày (khi `EVERY_N_DAYS`), ngày bắt đầu hoặc ngày giờ (khi `ONCE`)
-- Xem trước dòng "Lần nhắc đầu tiên: ..." theo giờ Việt Nam
+- **Gắn với** (ô chọn): "Không gắn bể" hoặc một trong các bể của người dùng; mở form từ chi tiết bể thì chọn sẵn bể đó, mở từ "Việc chung" thì chọn sẵn "Không gắn bể"
+- Loại việc (nút phân đoạn: Cho ăn / Thay nước / Bón phân / Khác), tiêu đề (tự điền theo loại nếu người dùng chưa tự sửa; "Khác" để trống), **ô riêng theo loại** (không bắt buộc: "Loại thức ăn", "Thay bao nhiêu % nước", "Lượng phân nước (ml)"), ghi chú, kiểu lặp (nút phân đoạn), giờ nhắc, số ngày (khi `EVERY_N_DAYS`), ngày bắt đầu (khi `EVERY_N_DAYS`) hoặc ngày (khi `ONCE`). **Ô ngày gõ theo `dd/MM/yyyy`** (tự thêm dấu `/` khi gõ) kèm nút biểu tượng lịch mở bộ chọn ngày của trình duyệt, không phụ thuộc ngôn ngữ trình duyệt; ngày không có thật (30/02) bị báo lỗi
+- Xem trước dòng "Lần nhắc đầu tiên: ..." theo giờ Việt Nam (frontend dùng cùng công thức `firstDue`, lấy "bây giờ" theo giờ Việt Nam chứ không theo múi giờ điện thoại)
+- Thẻ lịch trong chi tiết bể hiện tiêu đề kèm chi tiết theo loại ("Thay 30% nước", "Bón 5,5 ml phân nước", "Thức ăn: Hạt 1mm")
 
 ### 5.5 Thông báo `/notifications`
 - Danh sách thông báo mới nhất trước: nội dung ("Bể Mini 30L: đến giờ cho ăn"), thời gian, trạng thái chưa đọc/đã đọc/đã xử lý
@@ -106,6 +122,7 @@ Toàn hệ thống dùng một múi giờ duy nhất là giờ Việt Nam (`Asia
 - Chế độ sáng/tối theo hệ thống
 - Chữ lớn, vùng chạm tối thiểu 44px
 - Mọi chuỗi giao diện bằng tiếng Việt; mọi danh sách có trạng thái rỗng, đang tải và lỗi
+- Mọi ô ngày (ngày setup, ngày bắt đầu của lịch) gõ và hiển thị theo `dd/MM/yyyy`, không theo ngôn ngữ của trình duyệt
 - Xoá bể / lịch cần hộp thoại xác nhận
 
 ## 6. Mô hình dữ liệu
@@ -117,24 +134,28 @@ users
   id, email (unique, lowercase), password_hash, display_name
 
 tanks
-  id, user_id (FK), name, volume_liters (nullable), type ('PLANTED'|'FISH_ONLY'|'OTHER'),
+  id, user_id (FK), name, volume_liters (DECIMAL(7,1), nullable),
+  length_cm, width_cm, height_cm (DECIMAL(5,1), nullable; đủ cả ba hoặc không có),
   setup_date (nullable), note (nullable)
-  index (user_id, name)   -- tên bể không trùng trong một user: kiểm tra ở service, không ràng buộc ở DB
+  index (user_id, name)   -- chỉ để tra cứu nhanh; cho phép trùng tên
 
 tank_fish
   id, tank_id (FK), species_name, quantity (int >= 1),
   status (TINYINT: 1 = còn sống, 0 = đã chết)
 
 care_tasks
-  id, tank_id (FK), type ('FEED'|'WATER_CHANGE'|'FERTILIZE'|'OTHER'),
+  id, user_id (FK, cascade), tank_id (nullable FK, cascade; null = lịch không gắn bể), type ('FEED'|'WATER_CHANGE'|'FERTILIZE'|'OTHER'),
   title, note (nullable),
   repeat_type ('DAILY'|'EVERY_N_DAYS'|'ONCE'),
   interval_days (nullable), time_of_day (TIME), start_date (nullable, DATE),
+  food_name (nullable, VARCHAR 100), water_change_percent (nullable, INT),
+  fertilizer_ml (nullable, DECIMAL(6,1)),   // ba ô riêng theo loại việc (migration V3)
   enabled, next_due_at (nullable)
-  index (enabled, next_due_at)
+  index (enabled, next_due_at), index (user_id), index (tank_id)
+  // migration V4: thêm user_id (điền từ bể cũ), cho phép tank_id null
 
 care_logs
-  id, tank_id (FK), task_id (nullable, SET NULL khi xoá lịch), task_title,
+  id, tank_id (nullable FK, cascade; null cho lịch không gắn bể), task_id (nullable, SET NULL khi xoá lịch), task_title,
   result ('DONE'|'SNOOZED'), due_at, acted_at
 
 notifications
@@ -172,17 +193,44 @@ POST   /api/auth/login             { email, password } -> { token, user }
 GET    /api/me                     -> user
 PATCH  /api/me                     { displayName? } -> user
 
-GET    /api/tanks                  -> [tank + taskCount + nextDueAt]
-POST   /api/tanks                  -> tank
-GET    /api/tanks/{id}             -> tank + fish + tasks
-PUT    /api/tanks/{id}             -> tank (gồm danh sách cá)
-DELETE /api/tanks/{id}
+GET    /api/tanks                  -> [{ id, name, volumeLiters, taskCount, nextDueAt }] (bể mới tạo trước)
+POST   /api/tanks                  TankRequest -> 201 tank
+GET    /api/tanks/{id}             -> tank (gồm `fish` và `tasks`)
+PUT    /api/tanks/{id}             TankRequest -> tank (thay toàn bộ danh sách cá)
+DELETE /api/tanks/{id}             -> 204 (xoá cả cá, lịch, nhật ký, thông báo của bể)
+```
 
-GET    /api/tanks/{id}/tasks       -> [task]
-POST   /api/tanks/{id}/tasks       -> task
-PUT    /api/tasks/{taskId}         -> task
+`TankRequest` / `tank`:
+
+```
+TankRequest { name, volumeLiters?, lengthCm?, widthCm?, heightCm?, setupDate?, note?, fish?: [FishRequest] }
+FishRequest { speciesName, quantity, status }          // status: "ALIVE" | "DEAD"
+tank        { id, name, volumeLiters, lengthCm, widthCm, heightCm, setupDate, note, createdAt, updatedAt,
+              fish: [{ id, speciesName, quantity, status }] }   // cá mới lên trước
+```
+
+Kích thước: gửi đủ `lengthCm`, `widthCm`, `heightCm` (server tính `volumeLiters`, bỏ qua giá trị client gửi) hoặc chỉ gửi `volumeLiters`; gửi thiếu một hai cạnh trả `400` với khoá lỗi là tên các cạnh còn thiếu, thể tích tính ra ngoài khoảng 0,1 đến 10.000 lít trả `400` với khoá `volumeLiters`. Số thập phân JSON, ví dụ `64.8`. Trường `type` cũ (nếu client còn gửi) bị bỏ qua. Danh sách `fish` trong request là thứ tự hiển thị (cá mới lên trước). Lỗi validation của một dòng cá có khoá dạng `fish[0].quantity`.
+
+```
+
+`tank.tasks` là danh sách `task` của bể (không có endpoint liệt kê theo bể); lịch không gắn bể lấy bằng `GET /api/tasks/general`:
+
+```
+TaskRequest { tankId?, type, title, note?, repeatType, intervalDays?, timeOfDay: "HH:mm", startDate?: "yyyy-MM-dd",
+              foodName?, waterChangePercent?, fertilizerMl? }
+task        { id, tankId (null nếu không gắn bể), type, title, note, repeatType, intervalDays, timeOfDay, startDate,
+              foodName, waterChangePercent, fertilizerMl, enabled, nextDueAt, createdAt, updatedAt }
+```
+
+Chỉ ô riêng khớp `type` được lưu. Lỗi validation theo khoá `tankId` (không phải bể của người dùng thì `404`), `title`, `waterChangePercent`, `fertilizerMl`, `foodName`, `intervalDays`, `startDate`.
+
+```
+POST   /api/tasks                   TaskRequest -> 201 task (tankId bỏ trống = không gắn bể)
+GET    /api/tasks/general          -> [task] (lịch không gắn bể của người dùng)
+GET    /api/tasks/{taskId}         -> task
+PUT    /api/tasks/{taskId}         TaskRequest -> task (đổi tankId được)
 PATCH  /api/tasks/{taskId}/enabled { enabled } -> task
-DELETE /api/tasks/{taskId}
+DELETE /api/tasks/{taskId}         -> 204 (nhật ký của lịch được giữ, task_id thành null)
 POST   /api/tasks/{taskId}/complete -> task (đã có nextDueAt mới)
 POST   /api/tasks/{taskId}/snooze   -> task (đã lùi 1 ngày)
 GET    /api/tanks/{id}/logs?limit=50 -> [careLog]
@@ -226,7 +274,10 @@ Service/controller:
 10. Hoàn thành/hoãn chuyển thông báo sang `RESOLVED`
 11. User A gọi id tank/task/notification của user B nhận 404
 12. Đăng ký trùng email nhận 409; đăng nhập sai nhận 401 với thông báo chung
-13. Tên bể trùng (khác hoa thường) bị từ chối
+13. Tên bể trùng vẫn được tạo; cá mới thêm luôn đứng đầu danh sách sau khi lưu
+14. Tạo lịch không gắn bể (`tankId` bỏ trống) thành công và chỉ xuất hiện ở `GET /api/tasks/general` của đúng người đó; đổi bể gắn kèm (bể ↔ không gắn bể) giữ nguyên `nextDueAt`; xoá bể không xoá lịch không gắn bể
+15. User A không xem, sửa, bật/tắt, xoá được lịch không gắn bể của user B, và không gắn lịch của mình vào bể của user B (`404`)
+16. Ô ngày nhận `dd/MM/yyyy`, tự thêm dấu `/`, từ chối ngày không có thật (30/02, 29/02 năm không nhuận) và gửi lên server dạng `yyyy-MM-dd`
 
 ## 11. Milestone MVP1 (nhánh `feature/mvp1`)
 
@@ -252,14 +303,15 @@ Trạng thái: `[x]` xong, `[ ]` chưa làm.
 - Phạm vi FE: trang `/login`, `/register`, slice `auth`, API client gắn JWT, 401 thì về `/login`, route bảo vệ, đăng xuất ở `/settings`, khung điều hướng đáy màn hình
 - Tiêu chí hoàn thành: đăng ký rồi đăng nhập được trên trình duyệt, tải lại trang vẫn giữ phiên, gọi API không token nhận 401; test mục 10 số 12 pass
 
-### [ ] M4. Quản lý bể
-- Phạm vi BE: CRUD `/api/tanks` (gồm danh sách cá), quy tắc tên bể và giới hạn số bể (mục 4.3), mọi truy vấn lọc theo user
+### [x] M4. Quản lý bể
+- Phạm vi BE: CRUD `/api/tanks` (gồm danh sách cá), các giới hạn dữ liệu (mục 4.3), `taskCount` và `nextDueAt` trong danh sách bể, nhập kích thước (dài, rộng, cao) hoặc thể tích với thể tích do server tính (migration `V2`, bỏ loại bể), mọi truy vấn lọc theo user
 - Phạm vi FE: `/tanks`, `/tanks/new`, `/tanks/:id`, `/tanks/:id/edit`, slice `tanks`, hộp thoại xác nhận xoá, trạng thái rỗng/tải/lỗi
 - Tiêu chí hoàn thành: tạo, sửa, xoá bể và cá trong bể trên điện thoại (390px); user A không truy cập được bể của user B (404); test mục 10 số 11 và 13 pass
 
-### [ ] M5. Lịch chăm và `ScheduleCalculator`
-- Phạm vi BE: lớp thuần `ScheduleCalculator` (`firstDue`, `nextAfterComplete`, `snooze`) theo mục 4.2; CRUD `/api/tanks/{id}/tasks`, `/api/tasks/{id}`, bật/tắt, giới hạn 20 lịch mỗi bể
-- Phạm vi FE: danh sách lịch trong chi tiết bể, form lịch chăm (mục 5.4) với dòng xem trước "Lần nhắc đầu tiên", bật/tắt nhanh, slice `tasks`
+### [x] M5. Lịch chăm và `ScheduleCalculator`
+- Phạm vi BE: lớp thuần `ScheduleCalculator` (`firstDue`, `nextAfterComplete`, `snooze`) theo mục 4.2; `POST /api/tasks`, `GET /api/tasks/{id}`, `GET /api/tasks/general`, `PUT/PATCH/DELETE /api/tasks/{id}`, `tasks` trong chi tiết bể, ô riêng theo loại việc (migration `V3`), lịch không gắn bể và đổi bể gắn kèm (migration `V4`), không giới hạn số lịch
+- Phạm vi FE: danh sách lịch trong chi tiết bể và mục "Việc chung" ở `/tanks`, form lịch chăm (mục 5.4) với ô "Gắn với" và dòng xem trước "Lần nhắc đầu tiên", ô ngày `dd/MM/yyyy`, bật/tắt nhanh, slice `tasks`
+- **TODO cho M6/M7 (spec chưa quy định, cần hỏi lại khi làm):** nhật ký của lịch không gắn bể hiện ở đâu (chi tiết bể không áp dụng); thẻ ở trang Hôm nay và nội dung thông báo hiện gì thay cho tên bể ("Việc chung"?)
 - Tiêu chí hoàn thành: tạo được ba kiểu lặp `DAILY`, `EVERY_N_DAYS`, `ONCE` và `nextDueAt` đúng theo giờ Việt Nam; test mục 10 số 1 đến 7 pass (đây là phần quan trọng nhất cần test kỹ)
 
 ### [ ] M6. Hoàn thành, tạm hoãn, trang Hôm nay, lịch sử
@@ -295,5 +347,10 @@ Trạng thái: `[x]` xong, `[ ]` chưa làm.
 - **Thông báo:** PWA + Web Push và danh sách thông báo trong app; chưa làm native app/email
 - **Hoãn:** MVP chỉ có một mức "hoãn đến mai" (+1 ngày, giữ giờ)
 - **Lịch:** chỉ có `DAILY`, `EVERY_N_DAYS`, `ONCE`; chưa có lịch theo thứ trong tuần hay nhiều mốc giờ trong ngày
-- **Dữ liệu cá:** nhập tay (tên + số lượng), chưa có thư viện loài
+- **Dữ liệu cá:** nhập tay (tên loài + số lượng + còn sống/đã chết), chưa có thư viện loài
+- **Bể:** cho phép trùng tên bể, không giới hạn số bể mỗi người dùng; bể mới tạo và cá mới thêm hiển thị lên trước
+- **Không có "loại bể"** (bỏ để giao diện đỡ rối). Kích thước bể nhập theo thể tích hoặc theo dài, rộng, cao; thể tích có 1 chữ số thập phân và do server tính khi có kích thước
+- **Lịch không gắn bể:** lịch chăm có thể không thuộc bể nào ("Việc chung", ví dụ thay nước cho trùn chỉ); lịch có chủ riêng (`user_id`) và đổi bể gắn kèm được
+- **Ô ngày:** luôn gõ và hiển thị `dd/MM/yyyy` (không theo ngôn ngữ trình duyệt)
+- **Lịch chăm:** giữ "loại việc" kèm một ô riêng không bắt buộc cho từng loại (thức ăn, % nước, ml phân nước); không giới hạn số lịch mỗi bể; lịch một lần phải ở tương lai
 - **Múi giờ:** toàn hệ thống dùng giờ Việt Nam (UTC+7) cố định, lưu `LocalDateTime`; không có múi giờ theo người dùng

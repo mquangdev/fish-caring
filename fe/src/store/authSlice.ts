@@ -1,11 +1,11 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit'
-import { ApiError } from '@/api/axiosClient'
-import { errorMessage, fieldMessages } from '@/lib/messages'
+import { errorMessage } from '@/lib/messages'
 import { clearStoredToken, getStoredToken, storeToken } from '@/lib/tokenStorage'
 import * as authService from '@/services/authService'
 import type { LoginPayload, RegisterPayload, User } from '@/types/api'
+import { toFailure, type Failure, type RequestStatus } from './failure'
 
-export type RequestStatus = 'idle' | 'loading' | 'succeeded' | 'failed'
+export type { RequestStatus }
 
 export interface AuthState {
   token: string | null
@@ -18,18 +18,7 @@ export interface AuthState {
   initialized: boolean
 }
 
-/** Serializable failure kept in the store (Vietnamese text, ready to show). */
-export interface AuthFailure {
-  message: string
-  fieldErrors: Record<string, string>
-  code: string
-}
-
-function toFailure(error: unknown, overrides: Record<string, string> = {}): AuthFailure {
-  const code = error instanceof ApiError ? error.code : 'UNKNOWN_ERROR'
-  const fieldErrors = error instanceof ApiError ? fieldMessages(error.fieldErrors) : {}
-  return { message: errorMessage(error, overrides), fieldErrors, code }
-}
+export type AuthFailure = Failure
 
 const REGISTER_OVERRIDES = { CONFLICT: 'Email này đã được đăng ký.' }
 

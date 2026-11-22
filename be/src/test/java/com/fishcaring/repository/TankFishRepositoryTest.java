@@ -21,13 +21,15 @@ class TankFishRepositoryTest extends RepositoryTestSupport {
                 new TankFishData("Neon", 10, FishStatus.ALIVE),
                 new TankFishData("Neon", 2, FishStatus.DEAD)), NOW);
 
+        // read back newest first: the row inserted last comes first
         List<TankFishEntity> rows = fish.findAllByTankId(tankId);
         assertThat(rows).hasSize(2);
-        assertThat(rows.get(0).getStatus()).isEqualTo(FishStatus.ALIVE);
-        assertThat(rows.get(0).getQuantity()).isEqualTo(10);
-        assertThat(rows.get(1).getStatus()).isEqualTo(FishStatus.DEAD);
-        assertThat(rows.get(1).getCreatedAt()).isEqualTo(NOW);
-        assertThat(rows.get(1).getUpdatedAt()).isEqualTo(NOW);
+        assertThat(rows.get(0).getStatus()).isEqualTo(FishStatus.DEAD);
+        assertThat(rows.get(0).getQuantity()).isEqualTo(2);
+        assertThat(rows.get(0).getCreatedAt()).isEqualTo(NOW);
+        assertThat(rows.get(0).getUpdatedAt()).isEqualTo(NOW);
+        assertThat(rows.get(1).getStatus()).isEqualTo(FishStatus.ALIVE);
+        assertThat(rows.get(1).getQuantity()).isEqualTo(10);
     }
 
     @Test

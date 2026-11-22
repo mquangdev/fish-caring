@@ -16,7 +16,8 @@ Người dùng là người chơi cá cảnh dùng điện thoại, nhiều khi 
 - BẮT BUỘC: hỗ trợ chế độ sáng/tối qua biến màu của theme. Độ tương phản chữ đạt WCAG AA. Không dùng màu làm dấu hiệu duy nhất (thêm icon hoặc nhãn)
 - BẮT BUỘC: dựng màn hình từ các component dùng chung ở `components/ui` (shadcn/ui: Button, Input, Card, Dialog, ...). Không tự dựng nút hoặc ô nhập dùng một lần. Mọi màn hình cùng một phong cách
 - BẮT BUỘC: mọi thao tác bất đồng bộ có đủ ba trạng thái: **đang tải** (skeleton hoặc spinner, khoá nút khi đang gửi), **lỗi** (thông báo tiếng Việt thân thiện kèm nút thử lại) và **rỗng** (một câu thân thiện kèm nút hành động). Báo thành công ngắn gọn (toast)
-- BẮT BUỘC: thao tác phá huỷ (xoá) luôn mở hộp thoại xác nhận nói rõ sẽ mất gì. Nút xoá không bao giờ là hành động chính
+- BẮT BUỘC: thao tác phá huỷ (xoá) luôn mở hộp thoại xác nhận nói rõ sẽ mất gì, dùng component `components/ConfirmDialog`. Nút xoá không bao giờ là hành động chính
+- BẮT BUỘC: lựa chọn một trong ít phương án (tối đa 4, ví dụ loại bể, trạng thái cá) dùng nút phân đoạn `components/ui/segmented-control` thay cho dropdown; vùng chạm >= 44px
 - BẮT BUỘC: form có nhãn rõ ràng, lỗi hiện ngay cạnh ô nhập, đúng `type`/`inputMode` cho bàn phím điện thoại, `autocomplete` phù hợp, bấm Enter để gửi
 - BẮT BUỘC: truy cập cơ bản: `aria-label` cho nút chỉ có icon, thứ tự focus hợp lý, dùng thẻ ngữ nghĩa (`button`, `nav`, `main`, `label`)
 - BẮT BUỘC: chữ hiển thị cho người dùng bằng tiếng Việt, ngắn gọn, thân thiện, dùng thuật ngữ nhất quán ("bể", "lịch chăm", "Hoàn thành", "Hoãn đến mai"). Ngày giờ hiển thị dạng `dd/MM/yyyy HH:mm` (giờ Việt Nam, API không trả kèm múi giờ) qua helper trong `lib/`. Không bao giờ hiện chuỗi ISO thô

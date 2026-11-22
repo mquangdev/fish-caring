@@ -1,11 +1,18 @@
 import { screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import App from './App'
+import { mockApi } from './test/mockApi'
 import { LOGGED_IN, LOGGED_OUT, renderWithProviders } from './test/renderWithProviders'
 
 describe('App routes', () => {
   it('sends a visitor from a private page to the login page', () => {
     renderWithProviders(<App />, { route: '/tanks', auth: LOGGED_OUT })
+
+    expect(screen.getByRole('heading', { name: 'Đăng nhập' })).toBeInTheDocument()
+  })
+
+  it('sends a visitor from a tank page to the login page', () => {
+    renderWithProviders(<App />, { route: '/tanks/7', auth: LOGGED_OUT })
 
     expect(screen.getByRole('heading', { name: 'Đăng nhập' })).toBeInTheDocument()
   })
@@ -20,9 +27,65 @@ describe('App routes', () => {
     }
   })
 
-  it('opens the other private pages inside the same layout', () => {
+  it('opens the tank list inside the same layout', async () => {
+    mockApi({ 'GET /tanks': { status: 200, data: [] } })
     renderWithProviders(<App />, { route: '/tanks', auth: LOGGED_IN })
+
     expect(screen.getByRole('heading', { name: 'Bể của tôi' })).toBeInTheDocument()
+    expect(await screen.findByText('Chưa có bể nào')).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Điều hướng chính' })).toBeInTheDocument()
+  })
+
+  it('opens the add tank form before treating "new" as an id', () => {
+    renderWithProviders(<App />, { route: '/tanks/new', auth: LOGGED_IN })
+
+    expect(screen.getByRole('heading', { name: 'Thêm bể' })).toBeInTheDocument()
+  })
+
+  it('opens the edit form for a tank id', async () => {
+    mockApi({
+      'GET /tanks/7': {
+        status: 200,
+        data: {
+          id: 7,
+          name: 'Bể 7',
+          volumeLiters: null,
+          lengthCm: null,
+          widthCm: null,
+          heightCm: null,
+          setupDate: null,
+          note: null,
+          createdAt: '2026-11-21T08:00:00',
+          updatedAt: '2026-11-21T08:00:00',
+          fish: [],
+        },
+      },
+    })
+    renderWithProviders(<App />, { route: '/tanks/7/edit', auth: LOGGED_IN })
+
+    expect(screen.getByRole('heading', { name: 'Sửa bể' })).toBeInTheDocument()
+    expect(await screen.findByLabelText('Tên bể')).toHaveValue('Bể 7')
+  })
+
+  it('opens the add task form before treating "tasks" as an id', async () => {
+    mockApi({ 'GET /tanks': { status: 200, data: [{ id: 7, name: 'Bể 7', volumeLiters: null, taskCount: 0, nextDueAt: null }] } })
+    renderWithProviders(<App />, { route: '/tanks/7/tasks/new', auth: LOGGED_IN })
+
+    expect(await screen.findByRole('heading', { name: 'Thêm lịch chăm' })).toBeInTheDocument()
+  })
+
+  it('opens the add general task form', async () => {
+    mockApi({ 'GET /tanks': { status: 200, data: [] } })
+    renderWithProviders(<App />, { route: '/tasks/new', auth: LOGGED_IN })
+
+    expect(await screen.findByLabelText('Gắn với')).toHaveValue('')
+    expect(screen.getByRole('heading', { name: 'Thêm lịch chăm' })).toBeInTheDocument()
+  })
+
+  it('sends a visitor from a task page to the login page', () => {
+    renderWithProviders(<App />, { route: '/tasks/3/edit', auth: LOGGED_OUT })
+
+    expect(screen.getByRole('heading', { name: 'Đăng nhập' })).toBeInTheDocument()
   })
 
   it('shows the register page to visitors', () => {

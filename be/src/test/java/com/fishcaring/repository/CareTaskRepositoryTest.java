@@ -19,8 +19,8 @@ class CareTaskRepositoryTest extends RepositoryTestSupport {
         long userId = newUser("a@example.com");
         long tankId = newTank(userId, "Be");
         LocalDateTime due = LocalDateTime.of(2026, 11, 28, 19, 0);
-        long id = tasks.insert(tankId, new CareTaskData(TaskType.WATER_CHANGE, "Thay nuoc", "30%",
-                RepeatType.EVERY_N_DAYS, 7, LocalTime.of(19, 0), LocalDate.of(2026, 11, 21), true, due), NOW);
+        long id = tasks.insert(userId, new CareTaskData(tankId, TaskType.WATER_CHANGE, "Thay nuoc", "30%",
+                RepeatType.EVERY_N_DAYS, 7, LocalTime.of(19, 0), LocalDate.of(2026, 11, 21), null, 30, null, true, due), NOW);
 
         CareTaskEntity task = tasks.findByIdAndUserId(id, userId).orElseThrow();
         assertThat(task.getTankId()).isEqualTo(tankId);
@@ -28,6 +28,9 @@ class CareTaskRepositoryTest extends RepositoryTestSupport {
         assertThat(task.getRepeatType()).isEqualTo(RepeatType.EVERY_N_DAYS);
         assertThat(task.getIntervalDays()).isEqualTo(7);
         assertThat(task.getTimeOfDay()).isEqualTo(LocalTime.of(19, 0));
+        assertThat(task.getWaterChangePercent()).isEqualTo(30);
+        assertThat(task.getFoodName()).isNull();
+        assertThat(task.getFertilizerMl()).isNull();
         assertThat(task.getStartDate()).isEqualTo(LocalDate.of(2026, 11, 21));
         assertThat(task.getEnabled()).isTrue();
         assertThat(task.getNextDueAt()).isEqualTo(due);
@@ -55,13 +58,15 @@ class CareTaskRepositoryTest extends RepositoryTestSupport {
     @Test
     void updateChangesFieldsAndUpdatedAtOnly() {
         long userId = newUser("a@example.com");
-        long id = newTask(newTank(userId, "Be"), "Cu");
+        long tankId = newTank(userId, "Be");
+        long id = newTask(tankId, "Cu");
         LocalDateTime later = NOW.plusHours(2);
 
-        assertThat(tasks.update(id, userId, taskData("Moi"), later)).isTrue();
+        assertThat(tasks.update(id, userId, taskData(tankId, "Moi"), later)).isTrue();
 
         CareTaskEntity task = tasks.findByIdAndUserId(id, userId).orElseThrow();
         assertThat(task.getTitle()).isEqualTo("Moi");
+        assertThat(task.getTankId()).isEqualTo(tankId);
         assertThat(task.getCreatedAt()).isEqualTo(NOW);
         assertThat(task.getUpdatedAt()).isEqualTo(later);
     }
@@ -79,7 +84,7 @@ class CareTaskRepositoryTest extends RepositoryTestSupport {
     }
 
     @Test
-    void listAndCountAreScopedToTheTank() {
+    void listIsScopedToTheTank() {
         long userId = newUser("a@example.com");
         long tankA = newTank(userId, "A");
         long tankB = newTank(userId, "B");
@@ -87,8 +92,51 @@ class CareTaskRepositoryTest extends RepositoryTestSupport {
         newTask(tankA, "2");
         newTask(tankB, "3");
 
-        assertThat(tasks.countByTankId(tankA)).isEqualTo(2);
         assertThat(tasks.findAllByTankId(tankA)).extracting(CareTaskEntity::getTitle).containsExactly("1", "2");
+    }
+
+    @Test
+    void generalTasksBelongToTheUserWithoutATank() {
+        long alice = newUser("a@example.com");
+        long bob = newUser("b@example.com");
+        long tank = newTank(alice, "Be");
+        long worms = newGeneralTask(alice, "Thay nuoc trun chi");
+        newTask(tank, "Cua be");
+        newGeneralTask(bob, "Cua Bob");
+
+        assertThat(tasks.findAllGeneralByUserId(alice)).extracting(CareTaskEntity::getTitle)
+                .containsExactly("Thay nuoc trun chi");
+        CareTaskEntity task = tasks.findByIdAndUserId(worms, alice).orElseThrow();
+        assertThat(task.getTankId()).isNull();
+        assertThat(task.getUserId()).isEqualTo(alice);
+        assertThat(tasks.findByIdAndUserId(worms, bob)).isEmpty();
+        assertThat(tasks.deleteByIdAndUserId(worms, bob)).isFalse();
+    }
+
+    @Test
+    void updateCanMoveATaskBetweenATankAndNoTank() {
+        long userId = newUser("a@example.com");
+        long tankId = newTank(userId, "Be");
+        long id = newGeneralTask(userId, "Viec");
+
+        assertThat(tasks.update(id, userId, taskData(tankId, "Viec"), NOW)).isTrue();
+        assertThat(tasks.findByIdAndUserId(id, userId).orElseThrow().getTankId()).isEqualTo(tankId);
+
+        assertThat(tasks.update(id, userId, taskData("Viec"), NOW)).isTrue();
+        assertThat(tasks.findByIdAndUserId(id, userId).orElseThrow().getTankId()).isNull();
+    }
+
+    @Test
+    void deletingATankDeletesItsTasksButNotTheGeneralOnes() {
+        long userId = newUser("a@example.com");
+        long tankId = newTank(userId, "Be");
+        newTask(tankId, "Cua be");
+        long general = newGeneralTask(userId, "Chung");
+
+        tanks.deleteByIdAndUserId(tankId, userId);
+
+        assertThat(tasks.findAllByTankId(tankId)).isEmpty();
+        assertThat(tasks.findByIdAndUserId(general, userId)).isPresent();
     }
 
     @Test

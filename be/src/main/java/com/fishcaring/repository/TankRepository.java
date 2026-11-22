@@ -2,8 +2,9 @@ package com.fishcaring.repository;
 
 import com.fishcaring.constant.TankSql;
 import com.fishcaring.entity.TankEntity;
-import com.fishcaring.enums.TankType;
+import com.fishcaring.entity.TankSummaryEntity;
 import com.fishcaring.object.TankData;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -21,12 +22,22 @@ public class TankRepository {
             rs.getLong("id"),
             rs.getLong("user_id"),
             rs.getString("name"),
-            rs.getObject("volume_liters", Integer.class),
-            TankType.valueOf(rs.getString("type")),
+            rs.getBigDecimal("volume_liters"),
+            rs.getBigDecimal("length_cm"),
+            rs.getBigDecimal("width_cm"),
+            rs.getBigDecimal("height_cm"),
             rs.getObject("setup_date", LocalDate.class),
             rs.getString("note"),
             rs.getObject("created_at", LocalDateTime.class),
             rs.getObject("updated_at", LocalDateTime.class));
+
+    private static final RowMapper<TankSummaryEntity> SUMMARY_MAPPER = (rs, rowNum) -> new TankSummaryEntity(
+            rs.getLong("id"),
+            rs.getString("name"),
+            rs.getBigDecimal("volume_liters"),
+            rs.getObject("created_at", LocalDateTime.class),
+            rs.getInt("task_count"),
+            rs.getObject("next_due_at", LocalDateTime.class));
 
     private final JdbcClient jdbc;
 
@@ -40,7 +51,9 @@ public class TankRepository {
                 .param("userId", userId)
                 .param("name", data.getName())
                 .param("volumeLiters", data.getVolumeLiters())
-                .param("type", data.getType().name())
+                .param("lengthCm", data.getLengthCm())
+                .param("widthCm", data.getWidthCm())
+                .param("heightCm", data.getHeightCm())
                 .param("setupDate", data.getSetupDate())
                 .param("note", data.getNote())
                 .param("now", now)
@@ -55,7 +68,9 @@ public class TankRepository {
                 .param("userId", userId)
                 .param("name", data.getName())
                 .param("volumeLiters", data.getVolumeLiters())
-                .param("type", data.getType().name())
+                .param("lengthCm", data.getLengthCm())
+                .param("widthCm", data.getWidthCm())
+                .param("heightCm", data.getHeightCm())
                 .param("setupDate", data.getSetupDate())
                 .param("note", data.getNote())
                 .param("now", now)
@@ -71,41 +86,12 @@ public class TankRepository {
                 .optional();
     }
 
-    public List<TankEntity> findAllByUserId(long userId) {
-        return jdbc.sql(TankSql.FIND_ALL_BY_USER_ID)
+    /** The user's tanks, newest first, each with its task count and earliest due time. */
+    public List<TankSummaryEntity> findAllSummariesByUserId(long userId) {
+        return jdbc.sql(TankSql.FIND_ALL_SUMMARIES_BY_USER_ID)
                 .param("userId", userId)
-                .query(MAPPER)
+                .query(SUMMARY_MAPPER)
                 .list();
-    }
-
-    public int countByUserId(long userId) {
-        return jdbc.sql(TankSql.COUNT_BY_USER_ID)
-                .param("userId", userId)
-                .query(Integer.class)
-                .single();
-    }
-
-    /**
-     * Case-insensitive name check within one user. Pass the tank's own id as {@code excludeTankId}
-     * when editing so the tank does not conflict with itself; pass null when creating.
-     */
-    public boolean existsByUserIdAndNameIgnoreCase(long userId, String name, Long excludeTankId) {
-        Integer count;
-        if (excludeTankId == null) {
-            count = jdbc.sql(TankSql.COUNT_BY_USER_ID_AND_NAME_IGNORE_CASE)
-                    .param("userId", userId)
-                    .param("name", name)
-                    .query(Integer.class)
-                    .single();
-        } else {
-            count = jdbc.sql(TankSql.COUNT_BY_USER_ID_AND_NAME_IGNORE_CASE_EXCLUDING_ID)
-                    .param("userId", userId)
-                    .param("name", name)
-                    .param("excludeTankId", excludeTankId)
-                    .query(Integer.class)
-                    .single();
-        }
-        return count > 0;
     }
 
     /** Returns true when a tank of this user was deleted. Child rows are removed by the database. */
