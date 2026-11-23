@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { DateField } from '@/components/DateField'
 import { EmptyState } from '@/components/EmptyState'
 import { FormField } from '@/components/FormField'
+import { TimeField } from '@/components/TimeField'
 import { TaskDetailField, type TaskDetailErrors, type TaskDetailValues } from '@/components/TaskDetailField'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -16,6 +17,7 @@ import { formatDateTime } from '@/lib/format'
 import { parseId } from '@/lib/ids'
 import { DEFAULT_TASK_TITLES, REPEAT_TYPE_LABELS, TASK_TYPE_LABELS } from '@/lib/labels'
 import { firstDue, vietnamNow } from '@/lib/schedule'
+import { isValidTime } from '@/lib/timeInput'
 import {
   validateFertilizerMl,
   validateFoodName,
@@ -126,10 +128,13 @@ export default function TaskFormPage() {
   const backTo = originTankId !== null ? `/tanks/${originTankId}` : '/tanks'
   const selectedTank = tanks.items.find((tank) => String(tank.id) === tankChoice)
   const intervalDays = repeatType === 'EVERY_N_DAYS' ? parseWholeNumber(interval) : null
-  const preview = firstDue(
-    { repeatType, timeOfDay, intervalDays, startDate: repeatType === 'DAILY' ? null : startDate || null },
-    vietnamNow(),
-  )
+  // the preview needs a real time; text that is still being typed gives none
+  const preview = isValidTime(timeOfDay)
+    ? firstDue(
+        { repeatType, timeOfDay, intervalDays, startDate: repeatType === 'DAILY' ? null : startDate || null },
+        vietnamNow(),
+      )
+    : null
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -300,12 +305,12 @@ export default function TaskFormPage() {
           <legend className="mb-2 text-sm leading-none font-medium">Lặp lại</legend>
           <SegmentedControl label="Kiểu lặp" value={repeatType} options={REPEAT_OPTIONS} onChange={setRepeatType} />
 
-          <FormField
+          <TimeField
             id="timeOfDay"
             label="Giờ nhắc"
-            type="time"
+            hint="Bấm để chọn giờ (24 giờ)."
             value={timeOfDay}
-            onChange={(e) => setTimeOfDay(e.target.value)}
+            onChange={setTimeOfDay}
             error={errors.time ?? saveFieldErrors.timeOfDay ?? null}
           />
 
