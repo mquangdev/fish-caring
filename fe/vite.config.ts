@@ -14,6 +14,8 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // Listen on every interface so a phone on the same Wi-Fi can open http://<LAN IP>:5173 as well as localhost.
+    host: true,
     proxy: {
       // Set VITE_API_PROXY when the backend runs on another port.
       '/api': process.env.VITE_API_PROXY ?? 'http://localhost:8080',
