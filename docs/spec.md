@@ -109,7 +109,7 @@ Toàn hệ thống dùng một múi giờ duy nhất là giờ Việt Nam (`Asia
 
 ### 5.4 Form lịch chăm
 - **Gắn với** (ô chọn): "Không gắn bể" hoặc một trong các bể của người dùng; mở form từ chi tiết bể thì chọn sẵn bể đó, mở từ "Việc chung" thì chọn sẵn "Không gắn bể"
-- Loại việc (nút phân đoạn: Cho ăn / Thay nước / Bón phân / Khác), tiêu đề (tự điền theo loại nếu người dùng chưa tự sửa; "Khác" để trống), **ô riêng theo loại** (không bắt buộc: "Loại thức ăn", "Thay bao nhiêu % nước", "Lượng phân nước (ml)"), ghi chú, kiểu lặp (nút phân đoạn), giờ nhắc, số ngày (khi `EVERY_N_DAYS`), ngày bắt đầu (khi `EVERY_N_DAYS`) hoặc ngày (khi `ONCE`). **Ô ngày gõ theo `dd/MM/yyyy`** (tự thêm dấu `/` khi gõ) kèm nút biểu tượng lịch mở bộ chọn ngày của trình duyệt, không phụ thuộc ngôn ngữ trình duyệt; ngày không có thật (30/02) bị báo lỗi
+- Loại việc (nút phân đoạn: Cho ăn / Thay nước / Bón phân / Khác), tiêu đề (tự điền theo loại nếu người dùng chưa tự sửa; "Khác" để trống), **ô riêng theo loại** (không bắt buộc: "Loại thức ăn", "Thay bao nhiêu % nước", "Lượng phân nước (ml)"), ghi chú, kiểu lặp (nút phân đoạn), giờ nhắc (**bấm ô để mở khung chọn từ dưới lên với hai cột cuộn: giờ 00 đến 23 và phút bước 5**, luôn 24 giờ, nút "Xong" để áp dụng, "Huỷ" để giữ giờ cũ; không dùng ô giờ của trình duyệt nên không có AM/PM; lịch cũ có phút lẻ như 19:07 vẫn hiện đủ và được giữ khi mở khung), số ngày (khi `EVERY_N_DAYS`), ngày bắt đầu (khi `EVERY_N_DAYS`) hoặc ngày (khi `ONCE`). **Ô ngày gõ theo `dd/MM/yyyy`** (tự thêm dấu `/` khi gõ) kèm nút biểu tượng lịch mở bộ chọn ngày của trình duyệt, không phụ thuộc ngôn ngữ trình duyệt; ngày không có thật (30/02) bị báo lỗi
 - Xem trước dòng "Lần nhắc đầu tiên: ..." theo giờ Việt Nam (frontend dùng cùng công thức `firstDue`, lấy "bây giờ" theo giờ Việt Nam chứ không theo múi giờ điện thoại)
 - Thẻ lịch trong chi tiết bể hiện tiêu đề kèm chi tiết theo loại ("Thay 30% nước", "Bón 5,5 ml phân nước", "Thức ăn: Hạt 1mm")
 
@@ -126,7 +126,7 @@ Toàn hệ thống dùng một múi giờ duy nhất là giờ Việt Nam (`Asia
 - Chế độ sáng/tối theo hệ thống
 - Chữ lớn, vùng chạm tối thiểu 44px
 - Mọi chuỗi giao diện bằng tiếng Việt; mọi danh sách có trạng thái rỗng, đang tải và lỗi
-- Mọi ô ngày (ngày setup, ngày bắt đầu của lịch) gõ và hiển thị theo `dd/MM/yyyy`, không theo ngôn ngữ của trình duyệt
+- Mọi ô ngày (ngày setup, ngày bắt đầu của lịch) gõ và hiển thị theo `dd/MM/yyyy`, mọi giờ (giờ nhắc) chọn bằng hai cột cuộn và hiển thị theo `HH:mm` 24 giờ (không AM/PM), không theo ngôn ngữ của trình duyệt
 - Xoá bể / lịch cần hộp thoại xác nhận
 
 ## 6. Mô hình dữ liệu
@@ -177,15 +177,17 @@ Enum và hàm thuần ở BE: `RepeatType`, `TaskType`; lớp `ScheduleCalculato
 ## 7. Thông báo đẩy (Web Push)
 
 - Ứng dụng là PWA: `manifest` + service worker, cài được lên Màn hình chính
-- BE tạo cặp khoá VAPID đọc từ biến môi trường (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`); FE lấy public key qua `GET /api/push/public-key`
-- Người dùng bấm "Bật thông báo" thì FE xin quyền, đăng ký `PushManager.subscribe`, gửi subscription lên `POST /api/push/subscribe`; tắt thì `DELETE /api/push/subscribe`
-- Scheduler của BE chạy mỗi phút (và một lần lúc khởi động; tắt bằng `app.scheduler.enabled=false`): tìm lịch `enabled` có `next_due_at <= now + 30 phút` chưa có thông báo chưa xử lý, tạo `notifications`, rồi gửi push tới mọi subscription của người dùng. Push lỗi `404/410` thì xoá subscription
-- Service worker nhận `push` và hiện thông báo; bấm vào thì mở `/` (Hôm nay)
+- Khoá VAPID đọc từ biến môi trường (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`); FE lấy public key qua `GET /api/push/public-key`. Khoá dạng base64url chuẩn Web Push (public = điểm P-256 không nén 65 byte, private = 32 byte), `VAPID_SUBJECT` là `mailto:` hoặc `https://`. Tạo cặp khoá bằng `java -cp target/classes com.fishcaring.service.VapidKeyGenerator`. **Không cấu hình thì push tắt êm** (ứng dụng vẫn chạy, `public-key` trả `404 NOT_FOUND`, FE ẩn nút); chỉ cấu hình một phần hoặc khoá sai thì ứng dụng không khởi động. Đổi khoá thì các thiết bị đã đăng ký không nhận được nữa và cần bật lại
+- Người dùng bấm "Bật thông báo" thì FE xin quyền, đăng ký `PushManager.subscribe`, gửi subscription lên `POST /api/push/subscribe`; tắt thì `DELETE /api/push/subscribe`. Một thiết bị (endpoint) chỉ thuộc một người dùng tại một thời điểm: đăng ký lại từ cùng thiết bị thì đổi khoá, và nếu người khác đăng nhập trên thiết bị đó thì thiết bị chuyển sang người đó. `DELETE` chỉ xoá thiết bị của chính mình (của người khác thì không làm gì, vẫn `204`)
+- Scheduler của BE chạy mỗi phút (và một lần lúc khởi động; tắt bằng `app.scheduler.enabled=false`): tìm lịch `enabled` có `next_due_at <= now + 30 phút` chưa có thông báo chưa xử lý, tạo `notifications`, rồi gửi push tới mọi subscription của người dùng (chỉ cho thông báo **mới tạo**, nên không gửi trùng). Gửi bất đồng bộ (luồng ảo, timeout 10 giây) để không làm chậm scheduler; lỗi một thiết bị không ảnh hưởng thiết bị khác. Push lỗi `404/410` thì xoá subscription. Nội dung mã hoá theo RFC 8291 (`aes128gcm`) và ký VAPID theo RFC 8292 (ES256), cài bằng JDK + Nimbus (không thêm thư viện), kiểm bằng vector mẫu của RFC 8291. Payload JSON `{ title, body, url, tag }`: `body` là nội dung thông báo, `url` là `/`, `tag` là `task-<id>` (thông báo mới về cùng lịch thay thế thông báo cũ trên thiết bị); `TTL` 2 giờ, `Urgency: normal`
+- Service worker `sw.js` nhận `push` và hiện thông báo (payload hỏng thì hiện "Có việc cần chăm."); bấm vào thì focus tab đang mở và chuyển tới `/` (Hôm nay), không có tab thì mở mới; chỉ mở đường dẫn trong app. **Không cache offline**: không có `fetch` handler, app luôn tải từ mạng. `manifest.webmanifest` (tên, `lang: vi`, `display: standalone`, icon 192/512 và bản maskable) và `apple-touch-icon` để cài lên Màn hình chính
 - Hỗ trợ nền tảng:
   - Android (Chrome, Edge, Firefox): nhận push kể cả khi đóng trình duyệt, không bắt buộc cài PWA
   - iPhone/iPad (iOS/iPadOS 16.4 trở lên): chỉ nhận push khi web app đã được "Thêm vào Màn hình chính" (Safari -> Chia sẻ -> Thêm vào Màn hình chính); mở bằng tab Safari thường không bật được. Dưới 16.4 không hỗ trợ
   - Máy tính: các trình duyệt chính đều nhận
-- FE phát hiện iOS chưa cài PWA thì hiện hướng dẫn tiếng Việt từng bước thay cho nút "Bật thông báo"; trình duyệt không hỗ trợ thì ẩn nút và chỉ dùng thông báo trong app
+- FE phát hiện iOS chưa cài PWA thì hiện hướng dẫn tiếng Việt từng bước thay cho nút "Bật thông báo"; trình duyệt không hỗ trợ hoặc máy chủ chưa có khoá VAPID thì ẩn nút và chỉ dùng thông báo trong app; quyền bị chặn thì hướng dẫn mở cài đặt trình duyệt. Trạng thái bật/tắt lấy từ trình duyệt (`PushManager.getSubscription()`); mỗi lần mở Hôm nay hoặc Cài đặt, thiết bị đã bật được đăng ký lại với máy chủ (idempotent) để máy chủ theo kịp trình duyệt
+- Banner mời bật ở trang Hôm nay (chỉ khi hỗ trợ, chưa bật, quyền chưa bị chặn); "Để sau" ẩn banner và nhớ trong `localStorage` của thiết bị
+- Đăng xuất gọi `DELETE /api/push/subscribe` cho thiết bị này trước khi xoá token, để thông báo của người này không đổ về máy người khác dùng sau (lỗi mạng không chặn đăng xuất; đăng ký của trình duyệt được giữ, đăng nhập lại thì đăng ký lại)
 - Yêu cầu HTTPS khi triển khai thật (localhost dùng được khi dev)
 
 ## 8. API (REST, JSON, prefix `/api`)
@@ -262,9 +264,10 @@ Mã trạng thái: 400 (validation), 401 (chưa đăng nhập/token sai), 404 (k
 
 - Mật khẩu băm BCrypt; JWT ký HS256 bằng `JWT_SECRET` (từ biến môi trường, tối thiểu 32 ký tự); CORS chỉ cho origin của FE
 - Mọi truy vấn dữ liệu luôn lọc theo user đang đăng nhập
-- Không ghi log mật khẩu, token, khoá push
+- Không ghi log mật khẩu, token, khoá push, endpoint push
+- `endpoint` push do người dùng gửi rồi server gọi tới, nên chống SSRF: chỉ nhận URL `https` (tối đa 512 ký tự, cổng mặc định, không có user/password), host là tên miền công khai (không phải địa chỉ IP, `localhost`, `*.local`, `*.internal`) và **phân giải ra địa chỉ công khai** (không loopback, private, link-local, CGNAT, multicast, IPv6 ULA); kiểm tra lúc đăng ký và lại ngay trước khi gửi. Khoá `p256dh` phải là điểm P-256 hợp lệ 65 byte, `auth` 16 byte
 - Giới hạn tốc độ đăng nhập/đăng ký cơ bản là việc làm sau; ghi chú lại khi triển khai public
-- Tải nhanh trên mạng di động; service worker chỉ cache tài nguyên tĩnh, không cache API
+- Tải nhanh trên mạng di động; service worker chỉ xử lý push, không cache gì (kể cả tài nguyên tĩnh)
 - Truy cập cơ bản: nhãn cho nút icon, tương phản đủ ở cả sáng và tối
 - Không tracking bên thứ ba
 
@@ -291,6 +294,10 @@ Service/controller:
 16. Ô ngày nhận `dd/MM/yyyy`, tự thêm dấu `/`, từ chối ngày không có thật (30/02, 29/02 năm không nhuận) và gửi lên server dạng `yyyy-MM-dd`
 17. Hoàn thành/hoãn lịch tắt trả 409 và không ghi nhật ký; hoàn thành lịch không gắn bể ghi nhật ký không có bể và xuất hiện ở `GET /api/tasks/general/logs`
 18. `GET /api/today` chia đúng nhóm theo `now` và 00:00 ngày mai, bỏ lịch tắt và lịch của người khác
+19. Mã hoá push khớp **từng byte với vector mẫu RFC 8291**; token VAPID là ES256 với `aud` là origin của push service, `exp` không quá 24 giờ và chữ ký xác minh được bằng khoá công khai
+20. Push gửi tới mọi thiết bị của đúng người nhận thông báo (không gửi người khác), chỉ cho thông báo mới tạo (chạy lại không gửi trùng); `404`/`410` xoá đúng subscription; lỗi một thiết bị không chặn thiết bị khác; chưa cấu hình VAPID thì không gửi
+21. Đăng ký push: ghi đè cùng endpoint, chuyển sang người dùng mới, từ chối endpoint `http`/IP/nội bộ (SSRF) và khoá sai độ dài; user B không xoá được thiết bị của user A
+22. Giờ nhắc chọn bằng khung hai cột cuộn (giờ 00 đến 23, phút bước 5, thêm phút lẻ nếu lịch cũ có), chỉ áp dụng khi bấm "Xong" (bấm "Huỷ" giữ giờ cũ), chọn được bằng chạm và phím mũi tên, gửi lên server đúng `HH:mm`; không dùng ô giờ của trình duyệt (không AM/PM)
 
 ## 11. Milestone MVP1 (nhánh `feature/mvp1`)
 
@@ -337,8 +344,8 @@ Trạng thái: `[x]` xong, `[ ]` chưa làm.
 - Phạm vi FE: trang `/notifications`, chuông/chấm số chưa đọc ở thanh điều hướng, polling 60 giây khi tab mở, slice `notifications`
 - Tiêu chí hoàn thành: tạo lịch hẹn sau 31 phút thì sau 1 đến 2 phút có đúng 1 thông báo trong app (trước giờ hẹn 30 phút); hoãn thì thông báo mới xuất hiện 30 phút trước giờ hẹn mới (ngày mai); test mục 10 số 8 đến 10 pass
 
-### [ ] M8. PWA và Web Push
-- Phạm vi BE: sinh/đọc khoá VAPID từ biến môi trường, `GET /api/push/public-key`, `POST/DELETE /api/push/subscribe`, gửi push khi tạo thông báo, xoá subscription khi push trả 404/410
+### [x] M8. PWA và Web Push
+- Phạm vi BE: đọc khoá VAPID từ biến môi trường (có công cụ `VapidKeyGenerator` để tạo), `GET /api/push/public-key`, `POST/DELETE /api/push/subscribe`, gửi push khi tạo thông báo, xoá subscription khi push trả 404/410
 - Phạm vi FE: `manifest`, icon, service worker (`push`, `notificationclick` mở `/`), nút "Bật/Tắt thông báo" ở `/settings` và banner ở Hôm nay, hướng dẫn cài vào Màn hình chính cho iOS, ẩn nút khi trình duyệt không hỗ trợ
 - Tiêu chí hoàn thành: trên Chrome (desktop hoặc Android) nhận được push khi đến giờ kể cả đóng tab; bấm thông báo mở trang Hôm nay. iOS chỉ kiểm thử được khi có HTTPS và đã cài PWA (kiểm thử iOS có thể làm sau khi triển khai)
 
@@ -363,9 +370,10 @@ Trạng thái: `[x]` xong, `[ ]` chưa làm.
 - **Dữ liệu cá:** nhập tay (tên loài + số lượng + còn sống/đã chết), chưa có thư viện loài
 - **Bể:** cho phép trùng tên bể, không giới hạn số bể mỗi người dùng; bể mới tạo và cá mới thêm hiển thị lên trước
 - **Không có "loại bể"** (bỏ để giao diện đỡ rối). Kích thước bể nhập theo thể tích hoặc theo dài, rộng, cao; thể tích có 1 chữ số thập phân và do server tính khi có kích thước
+- **Web Push:** tự cài mã hoá và ký VAPID bằng JDK + Nimbus, không thêm thư viện; PWA chỉ để cài được và nhận push, không cache offline; chưa cấu hình VAPID thì push tắt êm; `endpoint` chỉ nhận `https` tới địa chỉ công khai; đăng xuất huỷ đăng ký push của thiết bị
 - **Thông báo trong app:** tạo trước 30 phút khi gần tới giờ hẹn (hằng số), một thông báo cho mỗi lần hẹn; thành đã xử lý khi hoàn thành, hoãn, tắt/bật lại hoặc sửa thời gian của lịch; chấm số chưa đọc cập nhật bằng polling 60 giây khi tab hiển thị
 - **Hoàn thành/hoãn:** chỉ lịch đang bật (tắt thì 409), được làm cả khi chưa đến giờ (hoàn thành sớm tính từ ngày hẹn, hoãn cộng 1 ngày giữ giờ); nhật ký là ảnh chụp lúc ghi và có chủ riêng; trang Hôm nay chia "Đến giờ / Quá hạn" và "Sắp tới hôm nay" (đến 00:00 ngày mai)
 - **Lịch không gắn bể:** lịch chăm có thể không thuộc bể nào ("Việc chung", ví dụ thay nước cho trùn chỉ); lịch có chủ riêng (`user_id`) và đổi bể gắn kèm được
-- **Ô ngày:** luôn gõ và hiển thị `dd/MM/yyyy` (không theo ngôn ngữ trình duyệt)
+- **Ô ngày và ô giờ:** ngày gõ và hiển thị `dd/MM/yyyy`; giờ chọn bằng hai cột cuộn (giờ 00 đến 23, phút bước 5) và hiển thị `HH:mm` 24 giờ, không AM/PM (không theo ngôn ngữ trình duyệt)
 - **Lịch chăm:** giữ "loại việc" kèm một ô riêng không bắt buộc cho từng loại (thức ăn, % nước, ml phân nước); không giới hạn số lịch mỗi bể; lịch một lần phải ở tương lai
 - **Múi giờ:** toàn hệ thống dùng giờ Việt Nam (UTC+7) cố định, lưu `LocalDateTime`; không có múi giờ theo người dùng

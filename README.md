@@ -12,7 +12,7 @@ Web app nhắc lịch chăm sóc bể cá / thủy sinh tại nhà: cho ăn, tha
 
 ## Trạng thái
 
-MVP1 đang phát triển trên nhánh `feature/mvp1`. Đã xong M0 (tài liệu), M1 (scaffold), M2 (schema, repository, nền tảng BE), M3 (đăng ký, đăng nhập), M4 (quản lý bể và cá), M5 (lịch chăm và tính lịch), M6 (hoàn thành, tạm hoãn, trang Hôm nay, lịch sử), M7 (thông báo trong app, tạo trước 30 phút khi gần tới giờ hẹn). Xem milestone ở mục 11 của [docs/spec.md](docs/spec.md).
+MVP1 đang phát triển trên nhánh `feature/mvp1`. Đã xong M0 (tài liệu), M1 (scaffold), M2 (schema, repository, nền tảng BE), M3 (đăng ký, đăng nhập), M4 (quản lý bể và cá), M5 (lịch chăm và tính lịch), M6 (hoàn thành, tạm hoãn, trang Hôm nay, lịch sử), M7 (thông báo trong app, tạo trước 30 phút khi gần tới giờ hẹn), M8 (PWA và Web Push). Xem milestone ở mục 11 của [docs/spec.md](docs/spec.md).
 
 ## Chạy local
 
@@ -40,7 +40,7 @@ MVP1 đang phát triển trên nhánh `feature/mvp1`. Đã xong M0 (tài liệu)
    $b = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); [Convert]::ToBase64String($b)
    ```
 
-   Kiểm tra: `http://localhost:8080/actuator/health` trả `{"status":"UP"}`. Cổng 8080 bận thì đặt `$env:SERVER_PORT = "8089"` (và khi chạy frontend đặt `$env:VITE_API_PROXY = "http://localhost:8089"`). Backend chỉ cho phép CORS từ `http://localhost:5173`; nếu frontend chạy ở cổng khác thì đặt `$env:CORS_ALLOWED_ORIGIN` cho khớp.
+   Kiểm tra: `http://localhost:8080/actuator/health` trả `{"status":"UP"}`. Cổng 8080 bận thì đặt `$env:SERVER_PORT = "8089"` (và khi chạy frontend đặt `$env:VITE_API_PROXY = "http://localhost:8089"`). Backend chỉ cho phép CORS từ `http://localhost:5173`; nếu frontend chạy ở cổng khác thì đặt `$env:CORS_ALLOWED_ORIGIN` cho khớp. Muốn mở web từ điện thoại cùng Wifi (`http://<IP máy tính>:5173`), cho phép nhiều địa chỉ, ngăn cách bằng dấu phẩy: `$env:CORS_ALLOWED_ORIGIN = "http://localhost:5173,http://192.168.0.104:5173"`. Lưu ý: qua `http://` thường, điện thoại xem được giao diện nhưng không bật được push (cần HTTPS).
 
 3. Chạy frontend:
 
@@ -49,5 +49,20 @@ MVP1 đang phát triển trên nhánh `feature/mvp1`. Đã xong M0 (tài liệu)
    npm install
    npm run dev
    ```
+
+4. (Không bắt buộc) Bật thông báo đẩy Web Push: tạo cặp khoá VAPID rồi đặt các biến môi trường trước khi chạy backend. Không đặt thì backend vẫn chạy bình thường và thông báo chỉ hiện trong app.
+
+   ```powershell
+   cd be
+   .\mvnw -q compile
+   java -cp target/classes com.fishcaring.service.VapidKeyGenerator   # in ra VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT
+   $env:VAPID_PUBLIC_KEY = "<khoá công khai>"
+   $env:VAPID_PRIVATE_KEY = "<khoá bí mật>"
+   $env:VAPID_SUBJECT = "mailto:ban@example.com"
+   ```
+
+   Đặt cả ba biến hoặc không biến nào (thiếu một hoặc khoá sai thì backend không khởi động). Đổi khoá thì mọi thiết bị đã bật cần bật lại. Khoá bí mật không được đưa vào git.
+
+   Lưu ý khi thử trên điện thoại: service worker và push chỉ chạy trên `localhost` hoặc **HTTPS**. Mở bằng `http://<IP mạng LAN>:5173` thì không bật được thông báo; cần một đường hầm HTTPS (tunnel) hoặc bản triển khai thật. iPhone/iPad (iOS 16.4 trở lên) chỉ nhận push sau khi thêm app vào Màn hình chính.
 
 Test backend: `cd be; .\mvnw verify` (chạy trên H2, không cần MySQL).
