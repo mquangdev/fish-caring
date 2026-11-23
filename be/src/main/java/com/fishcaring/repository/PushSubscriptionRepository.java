@@ -66,4 +66,24 @@ public class PushSubscriptionRepository {
                 .update();
         return rows > 0;
     }
+
+    /** Returns true when the subscription of this endpoint was updated (keys, owner and device). */
+    public boolean updateByEndpoint(String endpoint, long userId, String p256dh, String auth, String userAgent,
+                                    LocalDateTime now) {
+        return jdbc.sql(PushSubscriptionSql.UPDATE_BY_ENDPOINT)
+                .param("endpoint", endpoint)
+                .param("userId", userId)
+                .param("p256dh", p256dh)
+                .param("auth", auth)
+                .param("userAgent", userAgent)
+                .param("now", now)
+                .update() > 0;
+    }
+
+    /** Removes a subscription whatever its owner is; used when the push service reports it as gone. */
+    public boolean deleteByEndpoint(String endpoint) {
+        return jdbc.sql(PushSubscriptionSql.DELETE_BY_ENDPOINT)
+                .param("endpoint", endpoint)
+                .update() > 0;
+    }
 }

@@ -65,8 +65,12 @@ describe('task validation', () => {
   it('time: HH:mm', () => {
     expect(validateTime('08:00')).toBeNull()
     expect(validateTime('23:59')).toBeNull()
-    expect(validateTime('')).toBe('Vui lòng chọn giờ nhắc.')
-    expect(validateTime('24:00')).toBe('Vui lòng chọn giờ nhắc.')
+    expect(validateTime('00:00')).toBeNull()
+    expect(validateTime('')).toBe('Vui lòng nhập giờ nhắc.')
+    expect(validateTime('  ')).toBe('Vui lòng nhập giờ nhắc.')
+    for (const bad of ['24:00', '23:60', '25:75', '19:3', '19', '8:05', '07:30 AM']) {
+      expect(validateTime(bad)).toBe('Giờ chưa hợp lệ. Nhập theo HH:mm (00:00 đến 23:59).')
+    }
   })
 
   it('date: required; a one-off task must be in the future', () => {

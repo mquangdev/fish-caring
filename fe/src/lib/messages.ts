@@ -15,6 +15,12 @@ const BY_CODE: Record<string, string> = {
 
 export const GENERIC_ERROR = 'Đã có lỗi xảy ra. Vui lòng thử lại.'
 
+export const PUSH_MESSAGES = {
+  denied: 'Bạn chưa cho phép thông báo. Hãy cho phép thông báo cho trang này trong cài đặt của trình duyệt.',
+  serverOff: 'Máy chủ chưa bật thông báo đẩy. Bạn vẫn nhận thông báo trong app.',
+  failed: 'Chưa bật được thông báo trên thiết bị này. Vui lòng thử lại.',
+}
+
 const FISH_ROW_ERROR = 'Thông tin cá chưa hợp lệ.'
 
 const BY_FIELD: Record<string, string> = {

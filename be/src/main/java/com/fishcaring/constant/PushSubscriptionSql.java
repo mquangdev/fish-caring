@@ -25,6 +25,19 @@ public final class PushSubscriptionSql {
             WHERE endpoint = :endpoint
             """;
 
+    /** A device keeps its endpoint; a new login on it moves the subscription to that user. */
+    public static final String UPDATE_BY_ENDPOINT = """
+            UPDATE push_subscriptions
+            SET user_id = :userId, p256dh = :p256dh, auth = :auth, user_agent = :userAgent, updated_at = :now
+            WHERE endpoint = :endpoint
+            """;
+
+    /** For the server itself (the push service said the subscription is gone). */
+    public static final String DELETE_BY_ENDPOINT = """
+            DELETE FROM push_subscriptions
+            WHERE endpoint = :endpoint
+            """;
+
     public static final String DELETE_BY_ENDPOINT_AND_USER_ID = """
             DELETE FROM push_subscriptions
             WHERE endpoint = :endpoint AND user_id = :userId

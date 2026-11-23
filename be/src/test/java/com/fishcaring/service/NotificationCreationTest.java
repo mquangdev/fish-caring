@@ -12,6 +12,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 /**
  * The creation of notifications against real SQL on H2: which tasks get one, when, with what text.
@@ -19,12 +20,13 @@ import org.junit.jupiter.api.Test;
  */
 class NotificationCreationTest extends RepositoryTestSupport {
 
+    private final PushNotifier pushNotifier = Mockito.mock(PushNotifier.class);
     private NotificationService service;
 
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(NOW.toInstant(ZoneOffset.UTC), ZoneOffset.UTC);
-        service = new NotificationService(notifications, new NotificationMapper(), clock);
+        service = new NotificationService(notifications, new NotificationMapper(), pushNotifier, clock);
     }
 
     private void dueAt(long taskId, LocalDateTime due) {
@@ -97,7 +99,7 @@ class NotificationCreationTest extends RepositoryTestSupport {
 
         // a day later the task is still not done and its due time has not moved
         Clock later = Clock.fixed(NOW.plusDays(1).toInstant(ZoneOffset.UTC), ZoneOffset.UTC);
-        assertThat(new NotificationService(notifications, new NotificationMapper(), later).createDueNotifications())
+        assertThat(new NotificationService(notifications, new NotificationMapper(), pushNotifier, later).createDueNotifications())
                 .isZero();
 
         assertThat(all(userId)).hasSize(1);
@@ -134,7 +136,7 @@ class NotificationCreationTest extends RepositoryTestSupport {
 
         // the new due time is tomorrow 08:10, so the notification appears from tomorrow 07:40
         Clock tomorrow = Clock.fixed(NOW.plusDays(1).minusMinutes(20).toInstant(ZoneOffset.UTC), ZoneOffset.UTC);
-        assertThat(new NotificationService(notifications, new NotificationMapper(), tomorrow).createDueNotifications())
+        assertThat(new NotificationService(notifications, new NotificationMapper(), pushNotifier, tomorrow).createDueNotifications())
                 .isEqualTo(1);
         assertThat(all(userId)).hasSize(2);
     }
@@ -154,6 +156,50 @@ class NotificationCreationTest extends RepositoryTestSupport {
         dueAt(second, NOW.plusMinutes(15));
         notifications.resolveOpenByTaskId(second, NOW);
         assertThat(service.createDueNotifications()).isEqualTo(1);
+    }
+
+    // ---- Web Push ----
+
+    @Test
+    void aNewNotificationIsPushedOnceToItsUserWithTheSameText() {
+        long userId = newUser("a@example.com");
+        long task = newTask(newTank(userId, "Bể Mini 30L"), "Cho ăn");
+        dueAt(task, LocalDateTime.of(2026, 11, 21, 8, 15));
+
+        service.createDueNotifications();
+        service.createDueNotifications();
+
+        var captor = org.mockito.ArgumentCaptor.forClass(com.fishcaring.object.PushMessage.class);
+        Mockito.verify(pushNotifier, Mockito.times(1)).notify(org.mockito.ArgumentMatchers.eq(userId), captor.capture());
+        assertThat(captor.getValue().getBody()).isEqualTo(all(userId).get(0).getMessage());
+        assertThat(captor.getValue().getTitle()).isEqualTo("Fish Caring");
+        assertThat(captor.getValue().getUrl()).isEqualTo("/");
+        assertThat(captor.getValue().getTag()).isEqualTo("task-" + task);
+    }
+
+    @Test
+    void nothingIsPushedWhenNoNotificationIsCreated() {
+        long userId = newUser("a@example.com");
+        dueAt(newTask(newTank(userId, "Be 1"), "Cho an"), NOW.plusHours(3));
+
+        service.createDueNotifications();
+
+        Mockito.verifyNoInteractions(pushNotifier);
+    }
+
+    @Test
+    void aNotificationThatAlreadyExistsForTheSameDueTimeIsNotPushedAgain() {
+        long userId = newUser("a@example.com");
+        long first = newTask(newTank(userId, "Be 1"), "Cho an");
+        dueAt(first, NOW.plusMinutes(10));
+        service.createDueNotifications();
+        notifications.resolveOpenByTaskId(first, NOW);
+        Mockito.clearInvocations(pushNotifier);
+
+        // the unique key refuses a second row for the same due time, so there is nothing new to push
+        assertThat(service.createDueNotifications()).isZero();
+
+        Mockito.verifyNoInteractions(pushNotifier);
     }
 
     // ---- which tasks ----

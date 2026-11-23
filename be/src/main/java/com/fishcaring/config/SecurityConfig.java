@@ -1,5 +1,6 @@
 package com.fishcaring.config;
 
+import java.util.Arrays;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -62,7 +63,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource(AppProperties props) {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(props.corsAllowedOrigin()));
+        // one origin, or several separated by commas (localhost and a phone on the same Wi-Fi in development)
+        config.setAllowedOrigins(Arrays.stream(props.corsAllowedOrigin().split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toList());
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

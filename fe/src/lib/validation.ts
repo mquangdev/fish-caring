@@ -1,6 +1,7 @@
 /** Client-side form checks. They mirror the backend rules and return Vietnamese messages (null = valid). */
 
 import { isIsoDate } from './dateInput'
+import { isValidTime } from './timeInput'
 import {
   calculateVolumeLiters,
   MAX_DIMENSION_CM,
@@ -139,8 +140,10 @@ export function validateInterval(value: string): string | null {
   return days < 2 || days > 60 ? 'Số ngày từ 2 đến 60.' : null
 }
 
+/** The reminder time, typed as HH:mm on the 24-hour clock. */
 export function validateTime(value: string): string | null {
-  return /^([01]\d|2[0-3]):[0-5]\d$/.test(value) ? null : 'Vui lòng chọn giờ nhắc.'
+  if (!value.trim()) return 'Vui lòng nhập giờ nhắc.'
+  return isValidTime(value) ? null : 'Giờ chưa hợp lệ. Nhập theo HH:mm (00:00 đến 23:59).'
 }
 
 /**

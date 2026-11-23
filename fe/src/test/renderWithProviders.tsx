@@ -7,6 +7,7 @@ import authReducer, { type AuthState } from '@/store/authSlice'
 import tanksReducer, { type TanksState } from '@/store/tanksSlice'
 import logsReducer from '@/store/logsSlice'
 import notificationsReducer from '@/store/notificationsSlice'
+import pushReducer from '@/store/pushSlice'
 import tasksReducer from '@/store/tasksSlice'
 import todayReducer from '@/store/todaySlice'
 import type { User } from '@/types/api'
@@ -48,7 +49,7 @@ export const EMPTY_TANKS: TanksState = {
 
 export function makeStore(auth: AuthState = LOGGED_OUT, tanks: TanksState = EMPTY_TANKS) {
   return configureStore({
-    reducer: { auth: authReducer, tanks: tanksReducer, tasks: tasksReducer, today: todayReducer, logs: logsReducer, notifications: notificationsReducer },
+    reducer: { auth: authReducer, tanks: tanksReducer, tasks: tasksReducer, today: todayReducer, logs: logsReducer, notifications: notificationsReducer, push: pushReducer },
     preloadedState: { auth, tanks },
   })
 }

@@ -3,11 +3,13 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { FormField } from '@/components/FormField'
+import { PushSettingsCard } from '@/components/PushSettingsCard'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { validateDisplayName } from '@/lib/validation'
 import { clearAuthError, signOut, updateDisplayName } from '@/store/authSlice'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import { releaseDevice } from '@/store/pushSlice'
 
 export default function SettingsPage() {
   const dispatch = useAppDispatch()
@@ -36,7 +38,9 @@ export default function SettingsPage() {
     }
   }
 
-  function handleLogout() {
+  async function handleLogout() {
+    // this device stops getting this account's notifications; a failure never blocks the logout
+    await dispatch(releaseDevice())
     dispatch(signOut())
     navigate('/login', { replace: true })
   }
@@ -72,7 +76,9 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Button variant="outline" onClick={handleLogout}>
+      <PushSettingsCard />
+
+      <Button variant="outline" onClick={() => void handleLogout()}>
         <LogOut aria-hidden="true" />
         Đăng xuất
       </Button>

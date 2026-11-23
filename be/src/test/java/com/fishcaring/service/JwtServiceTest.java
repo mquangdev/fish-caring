@@ -28,7 +28,7 @@ class JwtServiceTest {
 
     private static final String SECRET = "unit-test-secret-unit-test-secret-0123456789";
 
-    private final AppProperties props = new AppProperties("http://localhost:5173", new AppProperties.Jwt(SECRET, 7));
+    private final AppProperties props = new AppProperties("http://localhost:5173", new AppProperties.Jwt(SECRET, 7), null);
     private final JwtConfig config = new JwtConfig();
     private final SecretKey key = config.jwtSecretKey(props);
     private final JwtEncoder encoder = config.jwtEncoder(key);

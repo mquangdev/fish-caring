@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Import({SecurityConfig.class, JwtConfig.class, RestAuthenticationEntryPoint.class, RestAccessDeniedHandler.class,
         SecurityConfigTest.PingController.class})
 @EnableConfigurationProperties(AppProperties.class)
-@TestPropertySource(properties = "app.cors-allowed-origin=http://localhost:5173")
+@TestPropertySource(properties = "app.cors-allowed-origin=http://localhost:5173, http://192.168.0.104:5173")
 class SecurityConfigTest {
 
     @RestController
@@ -60,6 +60,15 @@ class SecurityConfigTest {
                         .header("Access-Control-Request-Headers", "Authorization"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"));
+    }
+
+    @Test
+    void severalOriginsCanBeAllowedAtOnce() throws Exception {
+        mvc.perform(options("/api/ping")
+                        .header("Origin", "http://192.168.0.104:5173")
+                        .header("Access-Control-Request-Method", "POST"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://192.168.0.104:5173"));
     }
 
     @Test

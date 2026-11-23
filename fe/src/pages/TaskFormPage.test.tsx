@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -94,7 +94,7 @@ describe('TaskFormPage', () => {
     expect(screen.getByRole('heading', { name: 'Thêm lịch chăm' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 1 }).parentElement).toHaveTextContent('Bể cá vàng')
     expect(screen.getByLabelText('Tiêu đề')).toHaveValue('Cho ăn')
-    expect(screen.getByLabelText('Giờ nhắc')).toHaveValue('08:00')
+    expect(screen.getByLabelText('Giờ nhắc')).toHaveTextContent('08:00')
     // exactly 08:00 now, so the first reminder is tomorrow
     expect(screen.getByText('Lần nhắc đầu tiên: 22/11/2026 08:00')).toBeInTheDocument()
   })
@@ -175,6 +175,97 @@ describe('TaskFormPage', () => {
 
     expect(date).toHaveValue('25/11/2026')
     expect(screen.getByText('Lần nhắc đầu tiên: 25/11/2026 08:00')).toBeInTheDocument()
+  })
+
+  async function pickTime(hour: string, minute: string) {
+    await userEvent.click(screen.getByLabelText('Giờ nhắc'))
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.click(within(within(dialog).getByRole('listbox', { name: 'Giờ' })).getByRole('option', { name: hour }))
+    await userEvent.click(within(within(dialog).getByRole('listbox', { name: 'Phút' })).getByRole('option', { name: minute }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Xong' }))
+  }
+
+  it('picks the reminder time on the 24-hour clock, never AM or PM', async () => {
+    withTanks()
+    renderForm()
+    const time = await screen.findByLabelText('Giờ nhắc')
+
+    expect(time).toHaveTextContent('08:00')
+    expect(screen.queryByText(/\b(AM|PM)\b/)).not.toBeInTheDocument()
+
+    await pickTime('19', '30')
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(time).toHaveTextContent('19:30')
+    // 19:30 today is after 08:00 now, so the first reminder is today
+    expect(screen.getByText('Lần nhắc đầu tiên: 21/11/2026 19:30')).toBeInTheDocument()
+  })
+
+  it('offers hours 00 to 23 and minutes in steps of 5', async () => {
+    withTanks()
+    renderForm()
+    await userEvent.click(await screen.findByLabelText('Giờ nhắc'))
+    const dialog = await screen.findByRole('dialog')
+
+    const hours = within(within(dialog).getByRole('listbox', { name: 'Giờ' })).getAllByRole('option')
+    expect(hours.map((o) => o.textContent)).toHaveLength(24)
+    expect(hours[0]).toHaveTextContent('00')
+    expect(hours[23]).toHaveTextContent('23')
+    const minutes = within(within(dialog).getByRole('listbox', { name: 'Phút' })).getAllByRole('option')
+    expect(minutes.map((o) => o.textContent)).toEqual(
+      ['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'],
+    )
+  })
+
+  it('starts the sheet on the current time and closing it leaves the time unchanged', async () => {
+    withTanks()
+    renderForm()
+    await userEvent.click(await screen.findByLabelText('Giờ nhắc'))
+    const dialog = await screen.findByRole('dialog')
+
+    expect(within(dialog).getByRole('option', { name: '08', selected: true })).toBeInTheDocument()
+    expect(within(dialog).getByRole('option', { name: '00', selected: true })).toBeInTheDocument()
+
+    await userEvent.click(within(within(dialog).getByRole('listbox', { name: 'Giờ' })).getByRole('option', { name: '21' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Huỷ' }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Giờ nhắc')).toHaveTextContent('08:00')
+  })
+
+  it('moves the chosen hour with the arrow keys', async () => {
+    withTanks()
+    renderForm()
+    await userEvent.click(await screen.findByLabelText('Giờ nhắc'))
+    const dialog = await screen.findByRole('dialog')
+
+    const hours = within(dialog).getByRole('listbox', { name: 'Giờ' })
+    hours.focus()
+    await userEvent.keyboard('{ArrowDown}{ArrowDown}')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Xong' }))
+
+    expect(screen.getByLabelText('Giờ nhắc')).toHaveTextContent('10:00')
+  })
+
+  it('leaves the time as it was when Xong is pressed without changes', async () => {
+    const api = withTanks({ 'POST /tasks': { status: 201, data: SAVED } })
+    renderForm()
+    await userEvent.click(await screen.findByLabelText('Giờ nhắc'))
+    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Xong' }))
+    expect(screen.getByLabelText('Giờ nhắc')).toHaveTextContent('08:00')
+    expect(api.calls.some((call) => call.method === 'post')).toBe(false)
+  })
+
+  it('sends the chosen time to the server as HH:mm', async () => {
+    const api = withTanks({ 'POST /tasks': { status: 201, data: SAVED } })
+    renderForm()
+    await screen.findByLabelText('Giờ nhắc')
+    await pickTime('21', '45')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Lưu' }))
+
+    await screen.findByText('Chi tiết bể')
+    expect(body(api.calls.find((c) => c.method === 'post')!).timeOfDay).toBe('21:45')
   })
 
   it('does not call the API when the input is invalid and shows the errors by the fields', async () => {
@@ -315,7 +406,7 @@ describe('TaskFormPage', () => {
     expect(screen.getByRole('heading', { name: 'Sửa lịch chăm' })).toBeInTheDocument()
     expect(screen.getByLabelText('Tiêu đề')).toHaveValue('Thay nước tuần')
     expect(screen.getByLabelText('Thay bao nhiêu % nước')).toHaveValue('30')
-    expect(screen.getByLabelText('Giờ nhắc')).toHaveValue('19:00')
+    expect(screen.getByLabelText('Giờ nhắc')).toHaveTextContent('19:00')
     expect(screen.getByLabelText('Số ngày')).toHaveValue('7')
     expect(screen.getByLabelText('Ngày bắt đầu')).toHaveValue('21/11/2026')
     expect(screen.getByLabelText('Ghi chú')).toHaveValue('Dùng nước khử clo')
