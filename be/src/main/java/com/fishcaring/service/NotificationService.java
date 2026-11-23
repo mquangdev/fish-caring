@@ -4,6 +4,7 @@ import com.fishcaring.dto.NotificationResponse;
 import com.fishcaring.entity.DueTaskEntity;
 import com.fishcaring.exception.NotFoundException;
 import com.fishcaring.mapper.NotificationMapper;
+import com.fishcaring.object.PushMessage;
 import com.fishcaring.repository.NotificationRepository;
 import java.time.Clock;
 import java.time.Duration;
@@ -33,11 +34,14 @@ public class NotificationService {
 
     private final NotificationRepository notifications;
     private final NotificationMapper mapper;
+    private final PushNotifier pushNotifier;
     private final Clock clock;
 
-    public NotificationService(NotificationRepository notifications, NotificationMapper mapper, Clock clock) {
+    public NotificationService(NotificationRepository notifications, NotificationMapper mapper,
+                               PushNotifier pushNotifier, Clock clock) {
         this.notifications = notifications;
         this.mapper = mapper;
+        this.pushNotifier = pushNotifier;
         this.clock = clock;
     }
 
@@ -51,8 +55,11 @@ public class NotificationService {
         int created = 0;
         for (DueTaskEntity task : notifications.findDueWithoutOpenNotification(now.plus(LEAD_TIME), BATCH_SIZE)) {
             try {
-                notifications.insert(task.getUserId(), task.getTaskId(), task.getDueAt(), message(task, now), now);
+                String text = message(task, now);
+                notifications.insert(task.getUserId(), task.getTaskId(), task.getDueAt(), text, now);
                 created++;
+                pushNotifier.notify(task.getUserId(), PushMessage.builder()
+                        .title("Fish Caring").body(text).url("/").tag("task-" + task.getTaskId()).build());
             } catch (DuplicateKeyException e) {
                 // a notification for exactly this due time already exists (for example it was resolved)
                 log.debug("Notification for task {} due {} already exists", task.getTaskId(), task.getDueAt());
