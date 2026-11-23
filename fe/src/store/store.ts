@@ -4,6 +4,7 @@ import authReducer, { signOut } from './authSlice'
 import tanksReducer from './tanksSlice'
 import logsReducer from './logsSlice'
 import notificationsReducer from './notificationsSlice'
+import pushReducer from './pushSlice'
 import tasksReducer from './tasksSlice'
 import todayReducer from './todaySlice'
 
@@ -16,6 +17,7 @@ export const store = configureStore({
     today: todayReducer,
     logs: logsReducer,
     notifications: notificationsReducer,
+    push: pushReducer,
   },
 })
 

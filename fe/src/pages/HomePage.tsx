@@ -2,6 +2,7 @@ import { CalendarCheck } from 'lucide-react'
 import { useEffect } from 'react'
 import { toast } from 'sonner'
 import { EmptyState } from '@/components/EmptyState'
+import { PushBanner } from '@/components/PushBanner'
 import { TodayTaskCard } from '@/components/TodayTaskCard'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -51,6 +52,8 @@ export default function HomePage() {
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-bold">Xin chào, {user?.displayName}</h1>
+
+      <PushBanner />
 
       {loading ? (
         <div className="flex flex-col gap-3" aria-busy="true" aria-label="Đang tải việc hôm nay">
