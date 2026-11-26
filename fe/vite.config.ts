@@ -31,6 +31,8 @@ export default defineConfig(({ mode }) => {
       environment: 'jsdom',
       setupFiles: ['./src/test/setup.ts'],
       globals: false,
+      // tests do not depend on the backend address in a local .env file
+      env: { VITE_API_BASE_URL: '' },
     },
   }
 })

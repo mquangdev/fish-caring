@@ -48,7 +48,7 @@ export function setUnauthorizedHandler(
 }
 
 /** A 401 from these endpoints means "wrong credentials", not "your session expired". */
-const PUBLIC_AUTH_PATHS = ["/auth/login", "/auth/register"];
+const PUBLIC_AUTH_PATHS = ["/api/auth/login", "/api/auth/register"];
 
 function isPublicAuthRequest(
   config: InternalAxiosRequestConfig | undefined,

@@ -14,8 +14,8 @@ afterEach(() => {
 })
 
 describe('axiosClient', () => {
-  it('uses /api as base URL', () => {
-    expect(axiosClient.defaults.baseURL).toBe('/api')
+  it('calls the same domain when no backend address is set', () => {
+    expect(axiosClient.defaults.baseURL).toBe('')
   })
 
   it('calls the backend set in VITE_API_BASE_URL', async () => {
@@ -24,7 +24,7 @@ describe('axiosClient', () => {
 
     const { axiosClient: configured } = await import('./axiosClient')
 
-    expect(configured.defaults.baseURL).toBe('https://api.example.com/api')
+    expect(configured.getUri({ url: '/api/tanks' })).toBe('https://api.example.com/api/tanks')
     vi.unstubAllEnvs()
   })
 
@@ -32,7 +32,7 @@ describe('axiosClient', () => {
     const api = mockApi({ 'GET /me': { status: 200, data: {} } })
     setTokenProvider(() => 'abc123')
 
-    await axiosClient.get('/me')
+    await axiosClient.get('/api/me')
 
     expect(api.calls[0].headers.get('Authorization')).toBe('Bearer abc123')
   })
@@ -40,7 +40,7 @@ describe('axiosClient', () => {
   it('sends no Authorization header without a token', async () => {
     const api = mockApi({ 'GET /me': { status: 200, data: {} } })
 
-    await axiosClient.get('/me')
+    await axiosClient.get('/api/me')
 
     expect(api.calls[0].headers.get('Authorization')).toBeFalsy()
   })
@@ -53,7 +53,7 @@ describe('axiosClient', () => {
       },
     })
 
-    const error = await axiosClient.post('/auth/register', {}).catch((e: unknown) => e)
+    const error = await axiosClient.post('/api/auth/register', {}).catch((e: unknown) => e)
 
     expect(error).toBeInstanceOf(ApiError)
     expect(error).toMatchObject({ status: 400, code: 'VALIDATION_ERROR', fieldErrors: { email: 'bad' } })
@@ -62,7 +62,7 @@ describe('axiosClient', () => {
   it('reports a missing server as NETWORK_ERROR', async () => {
     mockNetworkDown()
 
-    const error = await axiosClient.get('/me').catch((e: unknown) => e)
+    const error = await axiosClient.get('/api/me').catch((e: unknown) => e)
 
     expect(error).toMatchObject({ status: 0, code: NETWORK_ERROR })
   })
@@ -72,7 +72,7 @@ describe('axiosClient', () => {
     const handler = vi.fn()
     setUnauthorizedHandler(handler)
 
-    await axiosClient.get('/me').catch(() => undefined)
+    await axiosClient.get('/api/me').catch(() => undefined)
 
     expect(handler).toHaveBeenCalledTimes(1)
   })
@@ -82,7 +82,7 @@ describe('axiosClient', () => {
     const handler = vi.fn()
     setUnauthorizedHandler(handler)
 
-    const error = await axiosClient.post('/auth/login', {}).catch((e: unknown) => e)
+    const error = await axiosClient.post('/api/auth/login', {}).catch((e: unknown) => e)
 
     expect(handler).not.toHaveBeenCalled()
     expect(error).toMatchObject({ code: 'INVALID_CREDENTIALS' })
