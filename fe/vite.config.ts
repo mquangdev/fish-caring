@@ -2,28 +2,35 @@
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { fileURLToPath } from 'node:url'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react(), tailwindcss()],
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
+export default defineConfig(({ mode }) => {
+  // Also read fe/.env.local, so VITE_API_PROXY does not have to be set in the shell every time.
+  // A variable set in the shell wins over the file.
+  const env = loadEnv(mode, process.cwd(), '')
+  // Set VITE_API_PROXY when the backend runs on another port.
+  const apiProxyTarget = process.env.VITE_API_PROXY ?? env.VITE_API_PROXY ?? 'http://localhost:8080'
+
+  return {
+    plugins: [react(), tailwindcss()],
+    resolve: {
+      alias: {
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
+      },
     },
-  },
-  server: {
-    port: 5173,
-    // Listen on every interface so a phone on the same Wi-Fi can open http://<LAN IP>:5173 as well as localhost.
-    host: true,
-    proxy: {
-      // Set VITE_API_PROXY when the backend runs on another port.
-      '/api': process.env.VITE_API_PROXY ?? 'http://localhost:8080',
+    server: {
+      port: 5173,
+      // Listen on every interface so a phone on the same Wi-Fi can open http://<LAN IP>:5173 as well as localhost.
+      host: true,
+      proxy: {
+        '/api': apiProxyTarget,
+      },
     },
-  },
-  test: {
-    environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
-    globals: false,
-  },
+    test: {
+      environment: 'jsdom',
+      setupFiles: ['./src/test/setup.ts'],
+      globals: false,
+    },
+  }
 })

@@ -18,6 +18,16 @@ describe('axiosClient', () => {
     expect(axiosClient.defaults.baseURL).toBe('/api')
   })
 
+  it('calls the backend set in VITE_API_BASE_URL', async () => {
+    vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.com/api/')
+    vi.resetModules()
+
+    const { axiosClient: configured } = await import('./axiosClient')
+
+    expect(configured.defaults.baseURL).toBe('https://api.example.com/api')
+    vi.unstubAllEnvs()
+  })
+
   it('adds the Bearer token when there is one', async () => {
     const api = mockApi({ 'GET /me': { status: 200, data: {} } })
     setTokenProvider(() => 'abc123')

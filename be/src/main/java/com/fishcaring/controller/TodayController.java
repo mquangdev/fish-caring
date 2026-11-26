@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/today")
-public class TodayController {
+public class    TodayController {
 
     private final TodayService todayService;
     private final CurrentUser currentUser;

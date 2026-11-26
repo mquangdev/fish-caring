@@ -50,6 +50,15 @@ MVP1 đang phát triển trên nhánh `feature/mvp1`. Đã xong M0 (tài liệu)
    npm run dev
    ```
 
+   Cấu hình frontend nằm trong `fe/.env.example` (sao chép thành `fe/.env.local`, file này git bỏ qua). Chỉ có hai biến:
+
+   | Biến | Dùng khi | Ý nghĩa |
+   |---|---|---|
+   | `VITE_API_PROXY` | chỉ khi chạy `npm run dev` | nơi dev server chuyển `/api` tới (mặc định `http://localhost:8080`). Đặt trong `fe/.env.local` thì khỏi gõ `$env:VITE_API_PROXY` mỗi lần; biến đặt trong shell vẫn thắng |
+   | `VITE_API_BASE_URL` | khi build, mọi môi trường | địa chỉ gốc của API, **gồm cả `/api`**. Để trống = `/api` trên cùng domain (dev proxy hoặc rewrite của Vercel). Đặt thành `https://api.ten-mien.com/api` để gọi thẳng backend ở domain khác |
+
+   Lưu ý: `VITE_API_BASE_URL` được ghi vào bản build, nên đổi giá trị rồi phải build/deploy lại. Trên Vercel đặt nó ở Project Settings, Environment Variables, không tạo `.env.production` trong repo. Khi gọi thẳng domain khác thì backend phải có `CORS_ALLOWED_ORIGIN` chứa domain của web, và domain đó phải là HTTPS thì điện thoại mới bật được thông báo đẩy. Chỉ biến bắt đầu bằng `VITE_` lọt vào trình duyệt, nên không đặt bí mật vào đây.
+
 4. (Không bắt buộc) Bật thông báo đẩy Web Push: tạo cặp khoá VAPID rồi đặt các biến môi trường trước khi chạy backend. Không đặt thì backend vẫn chạy bình thường và thông báo chỉ hiện trong app.
 
    ```powershell
