@@ -1,5 +1,6 @@
-import axios, { type InternalAxiosRequestConfig } from 'axios'
-import type { ApiErrorBody } from '@/types/api'
+import axios, { type InternalAxiosRequestConfig } from "axios";
+import { buildApiUrl } from "@/lib/apiBaseUrl";
+import type { ApiErrorBody } from "@/types/api";
 
 /**
  * The only place axios is configured. Services import `axiosClient`; nothing else talks to the
@@ -7,76 +8,96 @@ import type { ApiErrorBody } from '@/types/api'
  * `setTokenProvider` / `setUnauthorizedHandler`) so this file never imports the store.
  */
 
-export const NETWORK_ERROR = 'NETWORK_ERROR'
-export const UNKNOWN_ERROR = 'UNKNOWN_ERROR'
+export const NETWORK_ERROR = "NETWORK_ERROR";
+export const UNKNOWN_ERROR = "UNKNOWN_ERROR";
 
 /** Every failed request is rejected with this error, whatever the cause. */
 export class ApiError extends Error {
-  readonly status: number
-  readonly code: string
-  readonly fieldErrors: Record<string, string>
+  readonly status: number;
+  readonly code: string;
+  readonly fieldErrors: Record<string, string>;
 
-  constructor(status: number, code: string, message: string, fieldErrors: Record<string, string> = {}) {
-    super(message)
-    this.name = 'ApiError'
-    this.status = status
-    this.code = code
-    this.fieldErrors = fieldErrors
+  constructor(
+    status: number,
+    code: string,
+    message: string,
+    fieldErrors: Record<string, string> = {},
+  ) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+    this.fieldErrors = fieldErrors;
   }
 }
 
-type TokenProvider = () => string | null
-type UnauthorizedHandler = () => void
+type TokenProvider = () => string | null;
+type UnauthorizedHandler = () => void;
 
-let tokenProvider: TokenProvider = () => null
-let unauthorizedHandler: UnauthorizedHandler | null = null
+let tokenProvider: TokenProvider = () => null;
+let unauthorizedHandler: UnauthorizedHandler | null = null;
 
 export function setTokenProvider(provider: TokenProvider): void {
-  tokenProvider = provider
+  tokenProvider = provider;
 }
 
-export function setUnauthorizedHandler(handler: UnauthorizedHandler | null): void {
-  unauthorizedHandler = handler
+export function setUnauthorizedHandler(
+  handler: UnauthorizedHandler | null,
+): void {
+  unauthorizedHandler = handler;
 }
 
 /** A 401 from these endpoints means "wrong credentials", not "your session expired". */
-const PUBLIC_AUTH_PATHS = ['/auth/login', '/auth/register']
+const PUBLIC_AUTH_PATHS = ["/auth/login", "/auth/register"];
 
-function isPublicAuthRequest(config: InternalAxiosRequestConfig | undefined): boolean {
-  const url = config?.url ?? ''
-  return PUBLIC_AUTH_PATHS.some((path) => url.startsWith(path))
+function isPublicAuthRequest(
+  config: InternalAxiosRequestConfig | undefined,
+): boolean {
+  const url = config?.url ?? "";
+  return PUBLIC_AUTH_PATHS.some((path) => url.startsWith(path));
 }
 
+/**
+ * Root of every API call: VITE_API_BASE_URL (from .env) + "/api". Services pass only the resource
+ * path ("/auth/login"), so "<API_URL>/auth/login" is what the browser requests.
+ */
+export const API_URL = buildApiUrl(import.meta.env.VITE_API_BASE_URL);
+
 export const axiosClient = axios.create({
-  baseURL: '/api',
+  baseURL: API_URL,
   timeout: 15000,
-  headers: { 'Content-Type': 'application/json' },
-})
+  headers: { "Content-Type": "application/json" },
+});
 
 axiosClient.interceptors.request.use((config) => {
-  const token = tokenProvider()
+  const token = tokenProvider();
   if (token) {
-    config.headers.set('Authorization', `Bearer ${token}`)
+    config.headers.set("Authorization", `Bearer ${token}`);
   }
-  return config
-})
+  return config;
+});
 
 axiosClient.interceptors.response.use(
   (response) => response,
   (error: unknown) => {
     if (!axios.isAxiosError(error)) {
-      return Promise.reject(new ApiError(0, UNKNOWN_ERROR, 'Unexpected error'))
+      return Promise.reject(new ApiError(0, UNKNOWN_ERROR, "Unexpected error"));
     }
     if (!error.response) {
-      return Promise.reject(new ApiError(0, NETWORK_ERROR, error.message))
+      return Promise.reject(new ApiError(0, NETWORK_ERROR, error.message));
     }
-    const { status, data } = error.response
-    const body = (data ?? {}) as ApiErrorBody
+    const { status, data } = error.response;
+    const body = (data ?? {}) as ApiErrorBody;
     if (status === 401 && !isPublicAuthRequest(error.config)) {
-      unauthorizedHandler?.()
+      unauthorizedHandler?.();
     }
     return Promise.reject(
-      new ApiError(status, body.code ?? UNKNOWN_ERROR, body.message ?? error.message, body.fieldErrors ?? {}),
-    )
+      new ApiError(
+        status,
+        body.code ?? UNKNOWN_ERROR,
+        body.message ?? error.message,
+        body.fieldErrors ?? {},
+      ),
+    );
   },
-)
+);

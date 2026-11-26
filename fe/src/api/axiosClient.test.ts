@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mockApi, mockNetworkDown } from '@/test/mockApi'
 import {
+  API_URL,
   ApiError,
   axiosClient,
   NETWORK_ERROR,
@@ -14,8 +15,19 @@ afterEach(() => {
 })
 
 describe('axiosClient', () => {
-  it('uses /api as base URL', () => {
-    expect(axiosClient.defaults.baseURL).toBe('/api')
+  it('uses /api on the same domain when no backend address is set', () => {
+    expect(API_URL).toBe('/api')
+    expect(axiosClient.defaults.baseURL).toBe(API_URL)
+  })
+
+  it('calls the backend set in VITE_API_BASE_URL', async () => {
+    vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.com/api/')
+    vi.resetModules()
+
+    const { axiosClient: configured } = await import('./axiosClient')
+
+    expect(configured.getUri({ url: '/tanks' })).toBe('https://api.example.com/api/tanks')
+    vi.unstubAllEnvs()
   })
 
   it('adds the Bearer token when there is one', async () => {

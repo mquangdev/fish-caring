@@ -20,7 +20,7 @@ export interface MockApi {
   calls: InternalAxiosRequestConfig[]
 }
 
-/** Routes are keyed like "POST /auth/login". Unknown routes answer 404. */
+/** Routes are keyed like "POST /auth/login" (the path after API_URL). Unknown routes answer 404. */
 export function mockApi(routes: Record<string, Handler>): MockApi {
   const calls: InternalAxiosRequestConfig[] = []
   const adapter: AxiosAdapter = async (config) => {

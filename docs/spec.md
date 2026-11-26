@@ -270,6 +270,7 @@ Mã trạng thái: 400 (validation), 401 (chưa đăng nhập/token sai), 404 (k
 - Tải nhanh trên mạng di động; service worker chỉ xử lý push, không cache gì (kể cả tài nguyên tĩnh)
 - Truy cập cơ bản: nhãn cho nút icon, tương phản đủ ở cả sáng và tối
 - Không tracking bên thứ ba
+- Cấu hình FE qua file `.env` (mẫu `fe/.env.example`; `fe/.env.local` bị git bỏ qua, không commit `.env.production`): `VITE_API_BASE_URL` (địa chỉ backend không kèm `/api`; chỉ `axiosClient` ghép thành `API_URL = <địa chỉ>/api`, service chỉ khai báo đường dẫn tài nguyên như `/auth/login`; trống hoặc giá trị lạ thì dùng `/api` cùng domain qua dev proxy) và `VITE_API_PROXY` (chỉ cho dev server, mặc định `http://localhost:8080`). Giá trị được ghi vào bản build nên đổi rồi phải build lại; không đặt bí mật vào biến `VITE_`. Gọi thẳng domain khác cần `CORS_ALLOWED_ORIGIN` của BE chứa domain của FE
 
 ## 10. Test case nghiệp vụ
 
@@ -352,6 +353,8 @@ Trạng thái: `[x]` xong, `[ ]` chưa làm.
 ### [ ] M9. Hoàn thiện và phát hành bản thử
 - Phạm vi: rà mobile 390px và chế độ sáng/tối, trạng thái rỗng/tải/lỗi mọi màn hình, trang 404, README hướng dẫn chạy từ đầu, GitHub Actions CI (BE `verify`, FE lint/typecheck/test/build), rà bảo mật mục 9
 - Tiêu chí hoàn thành: người mới clone repo chạy được toàn bộ theo README; CI xanh; đi hết luồng của mục 1 (đăng ký, tạo bể, đặt lịch, nhận thông báo, hoàn thành/hoãn) không lỗi; không còn lỗi console; PR `feature/mvp1` sẵn sàng merge vào `main`
+
+Triển khai: FE trên Vercel (thư mục gốc `fe`, `fe/vercel.json`), gọi thẳng domain backend qua `VITE_API_BASE_URL`; backend chạy ở host khác. CI GitHub Actions có hai job `frontend` và `backend`.
 
 ### Thứ tự và phụ thuộc
 
