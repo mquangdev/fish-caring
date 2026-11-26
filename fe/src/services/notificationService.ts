@@ -5,21 +5,21 @@ import type { AppNotification } from "@/types/api";
 
 export async function listNotifications(): Promise<AppNotification[]> {
   const { data } =
-    await axiosClient.get<AppNotification[]>("/api/notifications");
+    await axiosClient.get<AppNotification[]>("/notifications");
   return data;
 }
 
 export async function getUnreadCount(): Promise<number> {
   const { data } = await axiosClient.get<{ count: number }>(
-    "/api/notifications/unread-count",
+    "/notifications/unread-count",
   );
   return data.count;
 }
 
 export async function markNotificationRead(id: number): Promise<void> {
-  await axiosClient.post(`/api/notifications/${id}/read`);
+  await axiosClient.post(`/notifications/${id}/read`);
 }
 
 export async function markAllNotificationsRead(): Promise<void> {
-  await axiosClient.post("/api/notifications/read-all");
+  await axiosClient.post("/notifications/read-all");
 }

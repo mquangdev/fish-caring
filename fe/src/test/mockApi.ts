@@ -20,23 +20,16 @@ export interface MockApi {
   calls: InternalAxiosRequestConfig[]
 }
 
-/**
- * Routes are keyed like "POST /auth/login", without the "/api" prefix that every request must have; a
- * request without the prefix, or without a route, answers 404. `calls` also drops the prefix.
- */
+/** Routes are keyed like "POST /auth/login" (the path after API_URL). Unknown routes answer 404. */
 export function mockApi(routes: Record<string, Handler>): MockApi {
   const calls: InternalAxiosRequestConfig[] = []
   const adapter: AxiosAdapter = async (config) => {
-    const url = config.url ?? ''
-    const hasPrefix = url.startsWith('/api/')
-    // a copy: the interceptors must keep seeing the real URL
-    const call = { ...config, url: hasPrefix ? url.slice('/api'.length) : url }
-    calls.push(call)
-    const key = `${(config.method ?? 'get').toUpperCase()} ${call.url}`
-    const handler = hasPrefix ? routes[key] : undefined
+    calls.push(config)
+    const key = `${(config.method ?? 'get').toUpperCase()} ${config.url}`
+    const handler = routes[key]
     const reply: MockReply = await (handler
       ? typeof handler === 'function'
-        ? handler(call)
+        ? handler(config)
         : handler
       : { status: 404, data: { code: 'NOT_FOUND', message: 'No mock for ' + key } })
     const response: AxiosResponse = {

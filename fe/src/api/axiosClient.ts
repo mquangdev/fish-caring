@@ -1,5 +1,5 @@
 import axios, { type InternalAxiosRequestConfig } from "axios";
-import { resolveApiBaseUrl } from "@/lib/apiBaseUrl";
+import { buildApiUrl } from "@/lib/apiBaseUrl";
 import type { ApiErrorBody } from "@/types/api";
 
 /**
@@ -48,7 +48,7 @@ export function setUnauthorizedHandler(
 }
 
 /** A 401 from these endpoints means "wrong credentials", not "your session expired". */
-const PUBLIC_AUTH_PATHS = ["/api/auth/login", "/api/auth/register"];
+const PUBLIC_AUTH_PATHS = ["/auth/login", "/auth/register"];
 
 function isPublicAuthRequest(
   config: InternalAxiosRequestConfig | undefined,
@@ -57,8 +57,14 @@ function isPublicAuthRequest(
   return PUBLIC_AUTH_PATHS.some((path) => url.startsWith(path));
 }
 
+/**
+ * Root of every API call: VITE_API_BASE_URL (from .env) + "/api". Services pass only the resource
+ * path ("/auth/login"), so "<API_URL>/auth/login" is what the browser requests.
+ */
+export const API_URL = buildApiUrl(import.meta.env.VITE_API_BASE_URL);
+
 export const axiosClient = axios.create({
-  baseURL: resolveApiBaseUrl(import.meta.env.VITE_API_BASE_URL),
+  baseURL: API_URL,
   timeout: 15000,
   headers: { "Content-Type": "application/json" },
 });

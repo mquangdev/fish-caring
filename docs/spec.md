@@ -270,7 +270,7 @@ Mã trạng thái: 400 (validation), 401 (chưa đăng nhập/token sai), 404 (k
 - Tải nhanh trên mạng di động; service worker chỉ xử lý push, không cache gì (kể cả tài nguyên tĩnh)
 - Truy cập cơ bản: nhãn cho nút icon, tương phản đủ ở cả sáng và tối
 - Không tracking bên thứ ba
-- Cấu hình FE qua file `.env` (mẫu `fe/.env.example`; `fe/.env.local` bị git bỏ qua, không commit `.env.production`): `VITE_API_BASE_URL` (địa chỉ backend không kèm `/api`, vì mọi đường dẫn trong service đã bắt đầu bằng `/api`; trống thì gọi cùng domain qua dev proxy; giá trị lạ cũng rơi về trống) và `VITE_API_PROXY` (chỉ cho dev server, mặc định `http://localhost:8080`). Giá trị được ghi vào bản build nên đổi rồi phải build lại; không đặt bí mật vào biến `VITE_`. Gọi thẳng domain khác cần `CORS_ALLOWED_ORIGIN` của BE chứa domain của FE
+- Cấu hình FE qua file `.env` (mẫu `fe/.env.example`; `fe/.env.local` bị git bỏ qua, không commit `.env.production`): `VITE_API_BASE_URL` (địa chỉ backend không kèm `/api`; chỉ `axiosClient` ghép thành `API_URL = <địa chỉ>/api`, service chỉ khai báo đường dẫn tài nguyên như `/auth/login`; trống hoặc giá trị lạ thì dùng `/api` cùng domain qua dev proxy) và `VITE_API_PROXY` (chỉ cho dev server, mặc định `http://localhost:8080`). Giá trị được ghi vào bản build nên đổi rồi phải build lại; không đặt bí mật vào biến `VITE_`. Gọi thẳng domain khác cần `CORS_ALLOWED_ORIGIN` của BE chứa domain của FE
 
 ## 10. Test case nghiệp vụ
 

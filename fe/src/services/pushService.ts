@@ -5,7 +5,7 @@ import type { PushSubscriptionPayload } from "@/lib/browserPush";
 
 export async function getPublicKey(): Promise<string> {
   const { data } = await axiosClient.get<{ publicKey: string }>(
-    "/api/push/public-key",
+    "/push/public-key",
   );
   return data.publicKey;
 }
@@ -13,9 +13,9 @@ export async function getPublicKey(): Promise<string> {
 export async function subscribe(
   payload: PushSubscriptionPayload,
 ): Promise<void> {
-  await axiosClient.post("/api/push/subscribe", payload);
+  await axiosClient.post("/push/subscribe", payload);
 }
 
 export async function unsubscribe(endpoint: string): Promise<void> {
-  await axiosClient.delete("/api/push/subscribe", { data: { endpoint } });
+  await axiosClient.delete("/push/subscribe", { data: { endpoint } });
 }

@@ -55,7 +55,7 @@ MVP1 đang phát triển trên nhánh `feature/mvp1`. Đã xong M0 (tài liệu)
    | Biến | Dùng khi | Ý nghĩa |
    |---|---|---|
    | `VITE_API_PROXY` | chỉ khi chạy `npm run dev` | nơi dev server chuyển `/api` tới (mặc định `http://localhost:8080`). Đặt trong `fe/.env.local` thì khỏi gõ `$env:VITE_API_PROXY` mỗi lần; biến đặt trong shell vẫn thắng |
-   | `VITE_API_BASE_URL` | khi build, mọi môi trường | địa chỉ backend, **không kèm `/api`** (app tự thêm). Để trống = cùng domain (dev proxy chuyển `/api`). Đặt thành `https://api.ten-mien.com` để gọi thẳng backend ở domain khác |
+   | `VITE_API_BASE_URL` | khi build, mọi môi trường | địa chỉ backend, **không kèm `/api`** (`axiosClient` ghép thành `<địa chỉ>/api`). Để trống = `/api` trên cùng domain (dev proxy). Đặt thành `https://api.ten-mien.com` để gọi thẳng backend ở domain khác |
 
    Lưu ý: `VITE_API_BASE_URL` được ghi vào bản build, nên đổi giá trị rồi phải build/deploy lại. Trên Vercel đặt nó ở Project Settings, Environment Variables, không tạo `.env.production` trong repo. Khi gọi thẳng domain khác thì backend phải có `CORS_ALLOWED_ORIGIN` chứa domain của web, và domain đó phải là HTTPS thì điện thoại mới bật được thông báo đẩy. Chỉ biến bắt đầu bằng `VITE_` lọt vào trình duyệt, nên không đặt bí mật vào đây.
 

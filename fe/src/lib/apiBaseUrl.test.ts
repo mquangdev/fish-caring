@@ -1,36 +1,36 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { resolveApiBaseUrl } from './apiBaseUrl'
+import { buildApiUrl } from './apiBaseUrl'
 
 afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('resolveApiBaseUrl', () => {
-  it('uses the same domain when nothing is set', () => {
-    expect(resolveApiBaseUrl(undefined)).toBe('')
-    expect(resolveApiBaseUrl('')).toBe('')
-    expect(resolveApiBaseUrl('   ')).toBe('')
+describe('buildApiUrl', () => {
+  it('uses /api on the same domain when nothing is set', () => {
+    expect(buildApiUrl(undefined)).toBe('/api')
+    expect(buildApiUrl('')).toBe('/api')
+    expect(buildApiUrl('   ')).toBe('/api')
   })
 
-  it('keeps the address of the backend', () => {
-    expect(resolveApiBaseUrl('https://api.example.com')).toBe('https://api.example.com')
-    expect(resolveApiBaseUrl('http://localhost:8080')).toBe('http://localhost:8080')
-    expect(resolveApiBaseUrl('/backend')).toBe('/backend')
+  it('appends /api to the address of the backend', () => {
+    expect(buildApiUrl('https://api.example.com')).toBe('https://api.example.com/api')
+    expect(buildApiUrl('http://localhost:8080')).toBe('http://localhost:8080/api')
+    expect(buildApiUrl('/backend')).toBe('/backend/api')
   })
 
-  it('drops spaces, trailing slashes and a trailing /api so the prefix is not doubled', () => {
-    expect(resolveApiBaseUrl('  https://api.example.com/  ')).toBe('https://api.example.com')
-    expect(resolveApiBaseUrl('https://api.example.com/api')).toBe('https://api.example.com')
-    expect(resolveApiBaseUrl('https://api.example.com/api//')).toBe('https://api.example.com')
-    expect(resolveApiBaseUrl('/api')).toBe('')
-    expect(resolveApiBaseUrl('/')).toBe('')
+  it('never doubles /api or slashes', () => {
+    expect(buildApiUrl('  https://api.example.com/  ')).toBe('https://api.example.com/api')
+    expect(buildApiUrl('https://api.example.com/api')).toBe('https://api.example.com/api')
+    expect(buildApiUrl('https://api.example.com/api//')).toBe('https://api.example.com/api')
+    expect(buildApiUrl('/api')).toBe('/api')
+    expect(buildApiUrl('/')).toBe('/api')
   })
 
-  it('falls back to the same domain and warns for a value that is not a path or an http(s) URL', () => {
+  it('falls back to /api and warns for a value that is not a path or an http(s) URL', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-    expect(resolveApiBaseUrl('api.example.com')).toBe('')
-    expect(resolveApiBaseUrl('ftp://api.example.com')).toBe('')
+    expect(buildApiUrl('api.example.com')).toBe('/api')
+    expect(buildApiUrl('ftp://api.example.com')).toBe('/api')
 
     expect(warn).toHaveBeenCalledTimes(2)
   })

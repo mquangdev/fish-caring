@@ -5,13 +5,13 @@ import type { CareLog } from "@/types/api";
 
 export async function getTankLogs(tankId: number): Promise<CareLog[]> {
   const { data } = await axiosClient.get<CareLog[]>(
-    `/api/tanks/${tankId}/logs`,
+    `/tanks/${tankId}/logs`,
   );
   return data;
 }
 
 /** Logs of the tasks that belong to no tank. */
 export async function getGeneralLogs(): Promise<CareLog[]> {
-  const { data } = await axiosClient.get<CareLog[]>("/api/tasks/general/logs");
+  const { data } = await axiosClient.get<CareLog[]>("/tasks/general/logs");
   return data;
 }
